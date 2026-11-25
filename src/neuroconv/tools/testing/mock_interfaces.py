@@ -45,12 +45,14 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
 from ...tools.events import (
     _get_event_type_source_ids,
     _resolve_detection_plan,
+    _separate_events,
     _validate_detection_configuration,
 )
 from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
+    _detect_occurrences,
     _samples_to_seconds,
 )
 from ...utils import (
@@ -104,7 +106,7 @@ class MockTimeSeriesInterface(BaseDataInterface):
         duration: float = 1.0,
         seed: int = 0,
         verbose: bool = False,
-        metadata_key: str = "TimeSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize a mock TimeSeries interface.
@@ -128,7 +130,7 @@ class MockTimeSeriesInterface(BaseDataInterface):
         self.sampling_frequency = sampling_frequency
         self.duration = duration
         self.seed = seed
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "TimeSeries"
 
         super().__init__(verbose=verbose)
 
@@ -298,8 +300,6 @@ class MockEventsInterface(BaseEventsInterface):
     constructor flag.
     """
 
-    _supports_event_extraction_configuration = True
-
     def __init__(
         self,
         *,
@@ -344,7 +344,9 @@ class MockEventsInterface(BaseEventsInterface):
             field holds text values. Applies to every event type.
         event_extraction_configuration : dict, optional
             Synthetic sources to read, keyed by output event type. The "silent" source has
-            no occurrences and is excluded from the default output.
+            no occurrences. The "digital_port" source is a sampled word carrying two lines, and the
+            "analog" source a sampled magnitude, so both are read through ``detection``. These three are
+            excluded from the default output.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -356,7 +358,8 @@ class MockEventsInterface(BaseEventsInterface):
         configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
         self._event_extraction_configuration = configuration
         if configuration is None:
-            self._event_sources = {name: name for name in available_sources if name != "silent"}
+            excluded_sources = ("silent", "digital_port", "analog")
+            self._event_sources = {name: name for name in available_sources if name not in excluded_sources}
         else:
             self._event_sources = {name: entry["source"] for name, entry in configuration.items()}
         self._source_indices = {name: index for index, name in enumerate(available_sources)}
@@ -369,7 +372,10 @@ class MockEventsInterface(BaseEventsInterface):
             source_names = ["events", "silent"]
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
-        return {name: {"supported_operations": ["separation"]} for name in source_names}
+        event_sources = {name: {"supported_operations": ["separation"]} for name in source_names}
+        event_sources["digital_port"] = {"supported_operations": ["detection"]}
+        event_sources["analog"] = {"supported_operations": ["signal_conditioning", "detection"]}
+        return event_sources
 
     @classmethod
     def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
@@ -384,8 +390,11 @@ class MockEventsInterface(BaseEventsInterface):
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
             # each mode's columns outright is what makes which-mode-covers-which readable.
-            if self._event_payload == "timestamps only":
-                # No value column at all.
+            if (
+                self._event_payload == "timestamps only"
+                or not self._get_events_data_dict()[event_type_source_id].payload
+            ):
+                # No value column at all. Occurrences detected on a sampled source carry no payload either.
                 columns = {}
             elif self._event_payload == "single value":
                 # One categorical column declaring labels and meanings: display labels plus a MeaningsTable.
@@ -462,11 +471,27 @@ class MockEventsInterface(BaseEventsInterface):
         if self._event_extraction_configuration is None:
             self._events_data_dict = events_by_entry
         else:
-            self._events_data_dict = self._separate_events(self._event_extraction_configuration, events_by_entry)
+            self._events_data_dict = _separate_events(self._event_extraction_configuration, events_by_entry)
         return self._events_data_dict
 
     def _read_event_source(self, event_type_source_id: str, source_name: str) -> _EventsData:
         """Generate the occurrences of one synthetic source, before any separation."""
+        if source_name in ("digital_port", "analog"):
+            if source_name == "digital_port":
+                # Two lines packed in one word. Line 0 pulses three times and line 1 once.
+                line_0 = np.array([0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0])
+                line_1 = np.array([0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0])
+                trace = (line_0 + 2 * line_1).astype("uint16")
+            else:
+                # A magnitude that is high from 0.2 to 0.4 s and from 0.6 to 0.8 s.
+                trace = np.array([0.0, 0.1, 4.9, 5.0, 0.2, 0.0, 5.1, 4.8, 0.1, 0.0])
+            timestamps, durations = _detect_occurrences(
+                entry=self._event_extraction_configuration[event_type_source_id],
+                trace=trace,
+                timestamps=0.1 * np.arange(len(trace)),
+            )
+            return _EventsData(event_type_source_id=event_type_source_id, timestamps=timestamps, durations=durations)
+
         duration = 0.05 if self._event_extent == "event with duration" else None
         index = self._source_indices[source_name]
         num_events = 0 if source_name == "silent" else self._num_events
@@ -818,7 +843,7 @@ class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
         num_behaviors: int = 4,
         sampling_frequency_hz: float = 30.0,
         seed: int = 0,
-        metadata_key: str = "mock_behavioral_segmentation",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -834,13 +859,14 @@ class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
             Frame rate of the labels, in Hz.
         seed : int, default: 0
             Seed for the random number generator.
-        metadata_key : str, default: "mock_behavioral_segmentation"
+        metadata_key : str, optional
             Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]`` and
             ``metadata["Behavior"]["EthogramBouts"]``, and of its object in ``temporal_alignment``.
+            Defaults to ``"mock_behavioral_segmentation"``.
         verbose : bool, default: False
             Control verbosity.
         """
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "mock_behavioral_segmentation"
         self.sampling_frequency_hz = sampling_frequency_hz
 
         # Bouts of a few frames each, so the run-length encoding has runs to find.
@@ -1494,7 +1520,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         seed: int = 0,
         sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
-        metadata_key: str = "MockPoseEstimation",
+        metadata_key: str | None = None,
         pose_estimation_metadata_key: str | None = None,
     ):
         """
@@ -1515,8 +1541,8 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
-        metadata_key : str, default: "MockPoseEstimation"
-            Metadata key for this interface.
+        metadata_key : str, optional
+            Metadata key for this interface. Defaults to ``"MockPoseEstimation"``.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
             ``metadata_key`` and will be removed in v0.12.0.
@@ -1532,7 +1558,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
 
         self.num_samples = num_samples
         self.num_nodes = num_nodes
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "MockPoseEstimation"
         self.seed = seed
         self.verbose = verbose
 
@@ -1828,7 +1854,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
-        metadata_key: str = "mock",
+        metadata_key: str | None = None,
         stimulus_duration: float | None = None,
         seed: int = 0,
         verbose: bool = False,
@@ -1864,9 +1890,9 @@ class MockIcephysInterface(BaseIcephysInterface):
         condition : str, optional
             Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Written as
             a column only when given.
-        metadata_key : str, default: "mock"
+        metadata_key : str, optional
             Identity of this interface's electrode and response series in the metadata dict. Give combined
-            instances distinct keys so each writes its own electrode and series.
+            instances distinct keys so each writes its own electrode and series. Defaults to ``"mock"``.
         stimulus_duration : float, optional
             Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
@@ -1887,13 +1913,13 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.stimulus_type = stimulus_type
         self._repetition = repetition
         self._condition = condition
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "mock"
         self.stimulus_duration = stimulus_duration
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
-        self._series_metadata_key = metadata_key
-        self._alignment_key = metadata_key
+        self._series_metadata_key = self.metadata_key
+        self._alignment_key = self.metadata_key
         samples_per_sweep = round(sweep_duration * sampling_frequency)
         self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,

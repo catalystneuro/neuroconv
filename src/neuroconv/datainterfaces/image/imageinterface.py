@@ -151,7 +151,7 @@ class ImageInterface(BaseImageInterface):
         folder_path: str | Path | None = None,
         *,
         images_location: Literal["acquisition", "stimulus"] | None = None,
-        metadata_key: str = "Images",
+        metadata_key: str | None = None,
         verbose: bool = True,
     ):
         """
@@ -165,8 +165,8 @@ class ImageInterface(BaseImageInterface):
             Path to folder containing images to be converted. Used if file_paths not provided.
         images_location : Literal["acquisition", "stimulus"], optional
             Deprecated. Pass ``parent_container`` to ``add_to_nwbfile`` instead. Will be removed in v0.12.0.
-        metadata_key : str, default: "Images"
-            Key to use in metadata["Images"][metadata_key] for storing container metadata
+        metadata_key : str, optional
+            Key to use in metadata["Images"][metadata_key] for storing container metadata. Defaults to ``"Images"``.
         verbose : bool, default: True
             Whether to print status messages
         """

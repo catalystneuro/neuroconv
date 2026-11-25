@@ -4,15 +4,13 @@ from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile
 
 from ._bsoid_reader import _get_sampling_frequency_from_file_name, _read_labels_and_frame_indices
-from ...._temporal_alignment import _TemporalAlignment
-from ....basedatainterface import BaseDataInterface
+from ..basebehavioralsegmentationinterface import BaseBehavioralSegmentationInterface
 from ....utils import DeepDict
 
 
-class BSOiDInterface(BaseDataInterface):
+class BSOiDInterface(BaseBehavioralSegmentationInterface):
     """DataInterface for the per-frame labels of B-SOiD (Behavioral Segmentation of Open-field In DeepLabCut).
 
     Reads the labels file B-SOiD writes for one predicted pose file, ``labels_pose`` from the Streamlit app
@@ -44,6 +42,11 @@ class BSOiDInterface(BaseDataInterface):
     keywords = ("B-SOiD", "behavioral segmentation", "pose segmentation", "unsupervised behavior")
     associated_suffixes = (".csv",)
     info = "Interface for the behavior groups of B-SOiD (Behavioral Segmentation of Open-field In DeepLabCut)."
+
+    source_software = "B-SOiD"
+    behavior_definition = (
+        "B-SOiD behavior group; the id is specific to the model that assigned it and carries no meaning outside it."
+    )
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -101,27 +104,11 @@ class BSOiDInterface(BaseDataInterface):
 
         super().__init__(file_path=file_path, verbose=verbose)
 
-        self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._add_time_bearing_object(
-            key=self.metadata_key,
-            get_native_times=self._get_native_times,
-            get_number_of_samples=lambda: len(self._labels),
-        )
+    def _get_labels(self) -> np.ndarray:
+        return self._labels
 
     def _get_native_times(self) -> np.ndarray:
         return self._frame_indices / self._sampling_frequency_hz
-
-    def get_metadata_schema(self) -> dict:
-        from ....tools.behavior import _get_ethogram_metadata_schema
-        from ....utils import get_base_schema
-
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        # Left open so the metadata other interfaces write under Behavior survives validation in a converter.
-        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
-        metadata_schema["properties"]["Behavior"]["properties"] = _get_ethogram_metadata_schema()
-
-        return metadata_schema
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -142,47 +129,3 @@ class BSOiDInterface(BaseDataInterface):
         )
 
         return metadata
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
-        """Write the behavior groups of one B-SOiD labels file to an NWBFile.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            Target NWB file.
-        metadata : dict, optional
-            Metadata dictionary. The bouts table is described by
-            ``metadata["Behavior"]["EthogramBouts"][metadata_key]``, whose ``ethogram_metadata_key`` names the
-            catalogue's entry in ``metadata["Behavior"]["Ethograms"]``.
-            Its optional ``source_pose_metadata_key`` and ``source_video_metadata_key`` name an entry of
-            ``metadata["Pose"]["PoseEstimations"]`` and of ``metadata["Behavior"]["InternalVideos"]`` or
-            ``["ExternalVideos"]``, whose object must already be in the file.
-        """
-        from ....tools.behavior import (
-            _add_ethogram_to_nwbfile,
-            _get_bouts_and_behaviors_from_labels,
-            _resolve_ethogram_bouts_entry,
-        )
-
-        default_metadata = DeepDict(self.get_metadata())
-        if metadata is not None:
-            default_metadata.deep_update(metadata)
-
-        entry_arguments = dict(labeling_method="automated")
-        entry_arguments.update(
-            _resolve_ethogram_bouts_entry(nwbfile, metadata=default_metadata, metadata_key=self.metadata_key)
-        )
-        _add_ethogram_to_nwbfile(
-            nwbfile,
-            **_get_bouts_and_behaviors_from_labels(
-                labels=self._labels,
-                timestamps=self.temporal_alignment[self.metadata_key].get_times(),
-                class_definition=(
-                    "B-SOiD behavior group; the id is specific to the model that assigned it and carries no meaning "
-                    "outside it."
-                ),
-            ),
-            **entry_arguments,
-            source_software="B-SOiD",
-            bout_concurrency="partition",  # B-SOiD assigns one group to every frame.
-        )

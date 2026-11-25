@@ -11,6 +11,7 @@ from pynwb.file import NWBFile
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
+from ...tools.signal_processing import _ON_CHANGE_READINGS
 from ...utils import to_camel_case
 
 _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
@@ -21,8 +22,37 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
         "properties": {
             "source": {"type": "string", "minLength": 1},
             "format_options": {"type": "object"},
-            "signal_conditioning": {"type": "object"},
-            "detection": {"type": "object"},
+            "signal_conditioning": {
+                "type": "object",
+                "required": ["binarize"],
+                "properties": {"binarize": {"anyOf": [{"const": "midpoint"}, {"type": "number"}]}},
+                "additionalProperties": False,
+            },
+            "detection": {
+                "type": "object",
+                "required": ["on_change"],
+                "properties": {
+                    "lines": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 0},
+                        "minItems": 1,
+                        "maxItems": 1,
+                    },
+                    "on_change": {
+                        "type": "object",
+                        "required": ["onset"],
+                        "properties": {
+                            "onset": {"enum": ["rising", "falling", "either"]},
+                            "end": {"enum": ["rising", "falling"]},
+                        },
+                        "additionalProperties": False,
+                    },
+                    "timestamp_estimate": {
+                        "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
+                    },
+                },
+                "additionalProperties": False,
+            },
             "separation": {
                 "type": "object",
                 "required": ["by_payload_fields"],
@@ -130,8 +160,6 @@ class BaseEventsInterface(BaseDataInterface):
 
     keywords = ("events",)
 
-    _supports_event_extraction_configuration = False
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
@@ -151,7 +179,7 @@ class BaseEventsInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        if cls._supports_event_extraction_configuration:
+        if "event_extraction_configuration" in source_schema["properties"]:
             configuration_schema = source_schema["properties"]["event_extraction_configuration"]
             configuration_schema.setdefault("allOf", []).append(deepcopy(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA))
         return source_schema
@@ -212,85 +240,19 @@ class BaseEventsInterface(BaseDataInterface):
                     f"{unsupported_operations} for source {source_name!r}. "
                     f"Supported operations: {supported_operations}."
                 )
+
+            detection = entry.get("detection")
+            if detection is not None:
+                onset = detection["on_change"]["onset"]
+                end = detection["on_change"].get("end")
+                if (onset, end) not in _ON_CHANGE_READINGS:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} sets 'on_change' with onset {onset!r} and end "
+                        f"{end!r}. An event that starts on a rising change ends on a falling one and the reverse, "
+                        "and an 'either' onset takes no end."
+                    )
             resolved_entries[entry_name] = {**entry, "source": source_name}
         return resolved_entries
-
-    @staticmethod
-    def _separate_events(
-        resolved_configuration: dict, events_by_entry: dict[str, _EventsData]
-    ) -> dict[str, _EventsData]:
-        """Apply each entry's ``separation`` to the occurrences read for it, keyed by the resulting identifiers.
-
-        An entry without ``separation`` is one event type identified by the entry name. An entry with it
-        becomes one event type per distinct value, or pair of values, of ``by_payload_fields``, in order of
-        first occurrence, or one per item of ``select`` in the order listed. The identifier is the entry
-        name followed by the values in the order of ``by_payload_fields``, joined with underscores.
-        Timestamps, durations and every payload field, including the separation fields, are selected with
-        the same rows, so a requested value with no occurrences gives a type with typed empty arrays.
-
-        Parameters
-        ----------
-        resolved_configuration : dict
-            The configuration returned by :meth:`_resolve_event_sources`.
-        events_by_entry : dict[str, _EventsData]
-            The occurrences the reader read for each entry, keyed by entry name.
-
-        Returns
-        -------
-        dict[str, _EventsData]
-            The event types of the interface, keyed by ``event_type_source_id``.
-
-        Raises
-        ------
-        ValueError
-            If two event types get the same identifier.
-        """
-        events_by_identifier = {}
-        origins = {}  # identifier -> where the event type came from, to explain a collision
-        for entry_name, events in events_by_entry.items():
-            separation = resolved_configuration[entry_name].get("separation")
-            if separation is None:
-                groups = [(entry_name, f"entry {entry_name!r}", slice(None))]
-            else:
-                fields = separation["by_payload_fields"]
-                indices_by_values = {}
-                for index in range(len(events.timestamps)):
-                    values = []
-                    for field in fields:
-                        value = events.payload[field][index]
-                        values.append(value.item() if isinstance(value, np.generic) else value)
-                    indices_by_values.setdefault(tuple(values), []).append(index)
-
-                selection = separation.get("select")
-                if selection is None:
-                    requested = list(indices_by_values)
-                elif len(fields) == 1:
-                    requested = list(dict.fromkeys((value,) for value in selection))
-                else:
-                    requested = list(dict.fromkeys(tuple(item[field] for field in fields) for item in selection))
-
-                groups = [
-                    (
-                        "_".join([entry_name, *(str(value) for value in values)]),
-                        f"entry {entry_name!r} with {dict(zip(fields, values))}",
-                        np.asarray(indices_by_values.get(values, []), dtype=int),
-                    )
-                    for values in requested
-                ]
-
-            for identifier, origin, indices in groups:
-                if identifier in origins:
-                    raise ValueError(
-                        f"Two event types get the identifier {identifier!r}: {origins[identifier]} and {origin}."
-                    )
-                origins[identifier] = origin
-                events_by_identifier[identifier] = _EventsData(
-                    event_type_source_id=identifier,
-                    timestamps=events.timestamps[indices],
-                    durations=None if events.durations is None else events.durations[indices],
-                    payload={field: field_values[indices] for field, field_values in events.payload.items()},
-                )
-        return events_by_identifier
 
     @property
     def temporal_alignment(self):

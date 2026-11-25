@@ -33,7 +33,7 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         *,
-        metadata_key: str = "TimeSeriesMiniscopeHeadOrientation",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -43,8 +43,9 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         ----------
         file_path : FilePath
             Path to headOrientation.csv file with columns: Time Stamp (ms), qw, qx, qy, qz
-        metadata_key : str, default: 'TimeSeriesMiniscopeHeadOrientation'
+        metadata_key : str, optional
             The key in metadata['TimeSeries'] to use for this interface.
+            Defaults to ``"TimeSeriesMiniscopeHeadOrientation"``.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
@@ -52,7 +53,7 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         import pandas as pd
 
         super().__init__(file_path=file_path, verbose=verbose)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "TimeSeriesMiniscopeHeadOrientation"
 
         # Store the device folder path (parent of headOrientation.csv)
         # This folder contains metaData.json with device info

@@ -29,7 +29,7 @@ This example uses a synthetic recording. Each configuration key names an event t
 
     >>> from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
     >>> MockEventsInterface.get_available_event_sources()
-    ['events', 'silent']
+    ['events', 'silent', 'digital_port', 'analog']
     >>> configuration = {
     ...     "trial_starts": {"source": "events"},
     ...     "unused_input": {"source": "silent"},
@@ -42,7 +42,7 @@ This example uses a synthetic recording. Each configuration key names an event t
     >>> MockEventsInterface(event_extraction_configuration={"trials": {"source": "other"}})
     Traceback (most recent call last):
         ...
-    ValueError: Event extraction entry 'trials' requests missing source 'other'. Available sources: ['events', 'silent']. Use MockEventsInterface.get_available_event_sources(...) to inspect the recording.
+    ValueError: Event extraction entry 'trials' requests missing source 'other'. Available sources: ['events', 'silent', 'digital_port', 'analog']. Use MockEventsInterface.get_available_event_sources(...) to inspect the recording.
 
 Omit the configuration to use the reader's default event types. A source declared in a recording
 can have zero occurrences. Request it explicitly to write an empty table.

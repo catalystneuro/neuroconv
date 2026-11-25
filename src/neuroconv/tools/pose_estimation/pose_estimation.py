@@ -66,7 +66,7 @@ def _add_pose_estimation_to_nwbfile(
     keypoint_data: dict[str, tuple[np.ndarray, np.ndarray | None]],
     timestamps: np.ndarray,
     metadata: dict | None = None,
-    metadata_key: str = DEFAULT_METADATA_KEY,
+    metadata_key: str | None = None,
 ) -> None:
     """Add one ``PoseEstimation`` container to an NWBFile from the dict-based metadata shape.
 
@@ -107,6 +107,7 @@ def _add_pose_estimation_to_nwbfile(
     """
     from ndx_pose import PoseEstimation
 
+    metadata_key = metadata_key or DEFAULT_METADATA_KEY
     placeholders = _get_pose_metadata_placeholders(keypoint_names=keypoint_data)
     placeholder_container = placeholders["Pose"]["PoseEstimations"][DEFAULT_METADATA_KEY]
     if metadata is None:
