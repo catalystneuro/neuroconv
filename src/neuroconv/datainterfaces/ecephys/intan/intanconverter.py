@@ -71,10 +71,9 @@ class IntanConverter(ConverterPipe):
             "interface": IntanStimInterface,
             "metadata_key": "intan_stim",
         },
-        # Both digital words route to one interface: it addresses lines by the header's own name for
-        # them, whose DIGITAL-IN / DIGITAL-OUT prefixes already say which word a line came off, so it
-        # covers whichever words a file carries without being told. Two entries pointing at one
-        # interface_name is how a file holding both still builds a single instance.
+        # Both digital words route to one interface: it reads each word as a port, "digital_inputs" or
+        # "digital_outputs", so it covers whichever words a file carries without being told. Two entries
+        # pointing at one interface_name is how a file holding both still builds a single instance.
         "USB board digital input channel": {
             "interface_name": "Digital",
             "interface": IntanDigitalInterface,
