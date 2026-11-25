@@ -42,7 +42,6 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
 
     keywords = ("events", "inscopix", "gpio")
     display_name = "Inscopix GPIO Events"
-    _supports_event_extraction_configuration = True
     associated_suffixes = (".gpio",)
     info = "Interface for discrete events derived from Inscopix GPIO channels."
 
