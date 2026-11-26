@@ -54,6 +54,7 @@ from ...tools.signal_processing import (
     _detect_code_changes,
     _detect_events,
     _detect_occurrences,
+    _detect_strobed_codes,
     _samples_to_seconds,
 )
 from ...utils import (
@@ -345,7 +346,7 @@ class MockEventsInterface(BaseEventsInterface):
             field holds text values. Applies to every event type.
         event_extraction_configuration : dict, optional
             Synthetic sources to read, keyed by output event type. The "silent" source has
-            no occurrences. The "digital_port" source is a sampled word carrying two lines, and the
+            no occurrences. The "digital_port" source is a sampled word carrying three lines, and the
             "analog" source a sampled magnitude, so both are read through ``detection``. These three are
             excluded from the default output.
         verbose : bool, optional
@@ -393,7 +394,7 @@ class MockEventsInterface(BaseEventsInterface):
             # each mode's columns outright is what makes which-mode-covers-which readable.
             payload = self._get_events_data_dict()[event_type_source_id].payload
             if "event_code" in payload:
-                # Occurrences detected with on_code_change carry the code their lines changed to.
+                # Occurrences detected with on_code_change or on_strobe carry the code their lines formed.
                 columns = {
                     "event_code": {
                         "column_name": "event_code",
@@ -485,16 +486,27 @@ class MockEventsInterface(BaseEventsInterface):
         """Generate the occurrences of one synthetic source, before any separation."""
         if source_name in ("digital_port", "analog"):
             if source_name == "digital_port":
-                # Two lines packed in one word. Line 0 pulses three times and line 1 once.
+                # Three lines packed in one word. Line 0 pulses three times and line 1 once. Line 2 is a strobe
+                # that pulses four times, twice while lines 0 and 1 hold the same code.
                 line_0 = np.array([0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0])
                 line_1 = np.array([0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0])
-                trace = (line_0 + 2 * line_1).astype("uint16")
+                line_2 = np.array([0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+                trace = (line_0 + 2 * line_1 + 4 * line_2).astype("uint16")
             else:
                 # A magnitude that is high from 0.2 to 0.4 s and from 0.6 to 0.8 s.
                 trace = np.array([0.0, 0.1, 4.9, 5.0, 0.2, 0.0, 5.1, 4.8, 0.1, 0.0])
             entry = self._event_extraction_configuration[event_type_source_id]
             if "on_code_change" in entry["detection"]:
                 timestamps, event_codes = _detect_code_changes(
+                    entry=entry, trace=trace, timestamps=0.1 * np.arange(len(trace))
+                )
+                return _EventsData(
+                    event_type_source_id=event_type_source_id,
+                    timestamps=timestamps,
+                    payload={"event_code": event_codes},
+                )
+            if "on_strobe" in entry["detection"]:
+                timestamps, event_codes = _detect_strobed_codes(
                     entry=entry, trace=trace, timestamps=0.1 * np.arange(len(trace))
                 )
                 return _EventsData(

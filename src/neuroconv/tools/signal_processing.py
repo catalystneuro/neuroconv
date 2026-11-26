@@ -480,6 +480,48 @@ def _detect_code_changes(
     return onsets, event_codes
 
 
+def _detect_strobed_codes(
+    entry: dict, trace: np.ndarray, timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Detect the occurrences of an ``on_strobe`` entry: the code its lines form, read at every strobe.
+
+    Each ``onset`` change of the strobe line ``on_strobe.line`` is an occurrence, and the code of
+    ``detection.lines`` is read on the sample where the strobe changed, ``detection.lines[k]`` supplying bit
+    ``k``. Two strobes that find the same code give two occurrences.
+
+    Parameters
+    ----------
+    entry : dict
+        The entry as ``BaseEventsInterface._resolve_event_sources`` returns it.
+    trace : numpy.ndarray
+        The samples of the entry's source, one integer per sample whose bit ``k`` is line ``k``.
+    timestamps : numpy.ndarray or callable
+        The time of each sample, or a function from sample indices to times, as :func:`_samples_to_seconds`
+        takes them.
+
+    Returns
+    -------
+    onsets : numpy.ndarray
+        The time of each strobe, in seconds.
+    event_codes : numpy.ndarray
+        The code read at each strobe, as the narrowest unsigned integer type that holds it.
+    """
+    detection = entry["detection"]
+    lines = detection["lines"]
+    strobe = detection["on_strobe"]
+    code = _select_bits(trace=trace, bits=lines)
+    strobe_line = _select_bits(trace=trace, bits=[strobe["line"]])
+    onset_samples, _ = _detect_events(strobe_line, strobe["onset"])
+    onsets, _ = _samples_to_seconds(
+        onset_samples=onset_samples,
+        offset_samples=None,
+        timestamps=timestamps,
+        event_time_convention=_TIMESTAMP_ESTIMATES[detection.get("timestamp_estimate", "first_sample_after_change")],
+    )
+    event_codes = code[onset_samples].astype(np.min_scalar_type(2 ** len(lines) - 1))
+    return onsets, event_codes
+
+
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,
