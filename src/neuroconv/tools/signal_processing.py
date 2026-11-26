@@ -440,6 +440,46 @@ def _detect_occurrences(
     )
 
 
+def _detect_code_changes(
+    entry: dict, trace: np.ndarray, timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Detect the occurrences of an ``on_code_change`` entry: every change of the code its lines form.
+
+    The selected lines are read together as one code, ``detection.lines[k]`` supplying bit ``k``, and each
+    sample where that code differs from the previous one is an occurrence. Lines that change on the same
+    sample give one occurrence.
+
+    Parameters
+    ----------
+    entry : dict
+        The entry as ``BaseEventsInterface._resolve_event_sources`` returns it.
+    trace : numpy.ndarray
+        The samples of the entry's source, one integer per sample whose bit ``k`` is line ``k``.
+    timestamps : numpy.ndarray or callable
+        The time of each sample, or a function from sample indices to times, as :func:`_samples_to_seconds`
+        takes them.
+
+    Returns
+    -------
+    onsets : numpy.ndarray
+        The time of each occurrence, in seconds.
+    event_codes : numpy.ndarray
+        The code each occurrence changed to, as the narrowest unsigned integer type that holds it.
+    """
+    detection = entry["detection"]
+    lines = detection["lines"]
+    code = _select_bits(trace=trace, bits=lines)
+    onset_samples, _ = _detect_events(code, "value_change")
+    onsets, _ = _samples_to_seconds(
+        onset_samples=onset_samples,
+        offset_samples=None,
+        timestamps=timestamps,
+        event_time_convention=_TIMESTAMP_ESTIMATES[detection.get("timestamp_estimate", "first_sample_after_change")],
+    )
+    event_codes = code[onset_samples].astype(np.min_scalar_type(2 ** len(lines) - 1))
+    return onsets, event_codes
+
+
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,

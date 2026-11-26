@@ -733,6 +733,50 @@ class TestEventDetection:
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
 
+    @pytest.mark.parametrize(
+        "lines, expected_event_codes",
+        [([0, 1], [1, 2, 3, 2, 0, 1, 0]), ([1, 0], [2, 1, 3, 1, 0, 2, 0])],
+    )
+    def test_code_change_gives_one_event_per_change_of_the_code(self, lines, expected_event_codes):
+        # At 0.3 s line 0 falls and line 1 rises on the same sample, which is one change of the code.
+        configuration = {"codes": {"source": "digital_port", "detection": {"lines": lines, "on_code_change": {}}}}
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Codes")
+        assert table.colnames == ("timestamp", "event_code")
+        np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.1])
+        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+        assert interface._get_events_data_dict()["codes"].payload["event_code"].dtype == np.dtype("uint8")
+
+    def test_code_change_separated_by_event_code(self):
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_code_change": {}},
+                "separation": {"by_payload_fields": ["event_code"], "select": [1, 3]},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        assert interface.get_event_type_source_ids() == ["codes_1", "codes_3"]
+        np.testing.assert_allclose(interface.get_event_times("codes_1"), [0.1, 0.9])
+        np.testing.assert_allclose(interface.get_event_times("codes_3"), [0.5])
+
+    @pytest.mark.parametrize(
+        "detection",
+        [
+            {"lines": [0, 1], "on_change": {"onset": "rising"}},
+            {"on_code_change": {}},
+            {"lines": [0, 1], "on_change": {"onset": "rising"}, "on_code_change": {}},
+        ],
+        ids=["on_change_on_two_lines", "on_code_change_without_lines", "two_methods"],
+    )
+    def test_detection_method_and_lines_must_agree(self, detection):
+        configuration = {"codes": {"source": "digital_port", "detection": detection}}
+        with pytest.raises(ValueError, match=r"\AInvalid event_extraction_configuration\['codes'\]\['detection'\]"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
 
 class TestEventSeparation:
     """``separation`` in ``event_extraction_configuration``, applied by ``neuroconv.tools.events._separate_events``."""

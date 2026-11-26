@@ -27,13 +27,17 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
             },
             "detection": {
                 "type": "object",
-                "required": ["on_change"],
+                # One method per entry. `on_change` watches one line, and `on_code_change` the code that the
+                # state of several lines forms, so it names them.
+                "oneOf": [{"required": ["on_change"]}, {"required": ["on_code_change"]}],
+                "if": {"required": ["on_change"]},
+                "then": {"properties": {"lines": {"maxItems": 1}}},
+                "dependencies": {"on_code_change": ["lines"]},
                 "properties": {
                     "lines": {
                         "type": "array",
                         "items": {"type": "integer", "minimum": 0},
                         "minItems": 1,
-                        "maxItems": 1,
                     },
                     "on_change": {
                         "type": "object",
@@ -44,6 +48,7 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
                         },
                         "additionalProperties": False,
                     },
+                    "on_code_change": {"type": "object", "properties": {}, "additionalProperties": False},
                     "timestamp_estimate": {
                         "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
                     },
@@ -230,7 +235,7 @@ class BaseEventsInterface(BaseDataInterface):
                 )
 
             detection = entry.get("detection")
-            if detection is not None:
+            if detection is not None and "on_change" in detection:
                 onset = detection["on_change"]["onset"]
                 end = detection["on_change"].get("end")
                 if (onset, end) not in _ON_CHANGE_READINGS:
