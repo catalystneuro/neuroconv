@@ -43,6 +43,7 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from ...tools.events import (
+    _detect_on_line_changes,
     _get_event_type_source_ids,
     _resolve_detection_plan,
     _separate_events,
@@ -346,8 +347,9 @@ class MockEventsInterface(BaseEventsInterface):
         event_extraction_configuration : dict, optional
             Synthetic sources to read, keyed by output event type. The "silent" source has
             no occurrences. The "digital_port" source is a sampled word carrying two lines, and the
-            "analog" source a sampled magnitude, so both are read through ``detection``. These three are
-            excluded from the default output.
+            "analog" source a sampled magnitude, so both are read through ``detection``. The
+            "line_changes" source holds the timestamped changes of two lines, as Open Ephys records them, also
+            read through ``detection``. These four are excluded from the default output.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -359,7 +361,7 @@ class MockEventsInterface(BaseEventsInterface):
         configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
         self._event_extraction_configuration = configuration
         if configuration is None:
-            excluded_sources = ("silent", "digital_port", "analog")
+            excluded_sources = ("silent", "digital_port", "analog", "line_changes")
             self._event_sources = {name: name for name in available_sources if name not in excluded_sources}
         else:
             self._event_sources = {name: entry["source"] for name, entry in configuration.items()}
@@ -376,6 +378,7 @@ class MockEventsInterface(BaseEventsInterface):
         event_sources = {name: {"supported_operations": ["separation"]} for name in source_names}
         event_sources["digital_port"] = {"supported_operations": ["detection", "separation"]}
         event_sources["analog"] = {"supported_operations": ["signal_conditioning", "detection"]}
+        event_sources["line_changes"] = {"supported_operations": ["detection", "separation"]}
         return event_sources
 
     @classmethod
@@ -399,6 +402,12 @@ class MockEventsInterface(BaseEventsInterface):
                         "column_name": "event_code",
                         "description": "The code formed by the selected lines of digital_port.",
                     },
+                }
+            elif "line" in payload and "onset" in payload:
+                # The line changes as the source holds them, before any detection.
+                columns = {
+                    "line": {"column_name": "line", "description": "The line of each edge, counted from 0."},
+                    "onset": {"column_name": "onset", "description": "Whether each edge is rising or falling."},
                 }
             elif self._event_payload == "timestamps only" or not payload:
                 # No value column at all. Occurrences detected on_change on a sampled source carry no payload.
@@ -483,6 +492,31 @@ class MockEventsInterface(BaseEventsInterface):
 
     def _read_event_source(self, event_type_source_id: str, source_name: str) -> _EventsData:
         """Generate the occurrences of one synthetic source, before any separation."""
+        if source_name == "line_changes":
+            # Changes of two lines, each with its time, line and direction. Line 0 pulses twice. Line 1 falls
+            # once before it is seen rising, pulses once, and rises again without falling.
+            edges = _EventsData(
+                event_type_source_id=event_type_source_id,
+                timestamps=np.array([0.05, 0.10, 0.15, 0.30, 0.40, 0.42, 0.45, 0.70]),
+                payload={
+                    "line": np.array([1, 0, 0, 1, 0, 1, 0, 1]),
+                    "onset": np.array(
+                        ["falling", "rising", "falling", "rising", "rising", "falling", "falling", "rising"]
+                    ),
+                },
+            )
+            entry = self._event_extraction_configuration[event_type_source_id]
+            if "detection" not in entry:
+                return edges
+            onset_indices, end_indices = _detect_on_line_changes(entry=entry, edges=edges)
+            timestamps = edges.timestamps[onset_indices]
+            durations = None
+            if end_indices is not None:
+                durations = np.full(len(onset_indices), np.nan)
+                closed = end_indices >= 0
+                durations[closed] = edges.timestamps[end_indices[closed]] - timestamps[closed]
+            return _EventsData(event_type_source_id=event_type_source_id, timestamps=timestamps, durations=durations)
+
         if source_name in ("digital_port", "analog"):
             if source_name == "digital_port":
                 # Two lines packed in one word. Line 0 pulses three times and line 1 once.

@@ -16,7 +16,7 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
-    expected_event_sources = ("events", "silent", "digital_port", "analog")
+    expected_event_sources = ("events", "silent", "digital_port", "analog", "line_changes")
     interface_kwargs = dict()
 
     def test_get_metadata(self):
@@ -564,7 +564,7 @@ class TestEventSourceResolution:
         event_extraction_configuration = {"requested": {"source": missing_source}}
         expected_error = (
             f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
-            "Available sources: ['events_0', 'events_1', 'silent', 'digital_port', 'analog']. "
+            "Available sources: ['events_0', 'events_1', 'silent', 'digital_port', 'analog', 'line_changes']. "
             "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
@@ -607,7 +607,7 @@ class TestEventSourceResolution:
         configuration = {"requested": {}}
         expected_error = (
             "Event extraction entry 'requested' must specify 'source' because this recording has "
-            "multiple event sources. Available sources: ['events', 'silent', 'digital_port', 'analog']."
+            "multiple event sources. Available sources: ['events', 'silent', 'digital_port', 'analog', 'line_changes']."
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
@@ -792,6 +792,51 @@ class TestEventDetection:
         codes_3_table = nwbfile.get_events_table("Codes3")
         np.testing.assert_allclose(codes_3_table["timestamp"][:], expected_codes_3_timestamps)
         np.testing.assert_array_equal(codes_3_table["event_code"][:], [3])
+
+    def test_end_pairs_line_changes_into_events_with_duration(self):
+        """Each rise of line 1 is paired with its next fall (|) into one event (*).
+
+        time    0.05 0.10 0.15 0.30 0.40 0.42 0.45 0.70
+        line      1    0    0    1    0    1    0    1
+        onset     F    R    F    R    R    F    F    R
+        events                   *---------|         *
+
+        The fall at 0.05 s closes a pulse whose rise was not recorded, so it is dropped. The rise at 0.70 s
+        is never closed, so its duration is missing.
+        """
+        configuration = {
+            "pulses": {
+                "source": "line_changes",
+                "detection": {"lines": [1], "on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.30, 0.70]
+        expected_durations = [0.12, np.nan]
+        table = nwbfile.get_events_table("Pulses")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_allclose(table["duration"][:], expected_durations)
+
+    def test_onset_keeps_the_line_changes_of_one_direction(self):
+        """With only an onset, the rises of line 0 are the events (*).
+
+        time    0.05 0.10 0.15 0.30 0.40 0.42 0.45 0.70
+        line      1    0    0    1    0    1    0    1
+        onset     F    R    F    R    R    F    F    R
+        events         *              *
+        """
+        configuration = {
+            "rises": {"source": "line_changes", "detection": {"lines": [0], "on_change": {"onset": "rising"}}}
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.10, 0.40]
+        table = nwbfile.get_events_table("Rises")
+        assert table.colnames == ("timestamp",)
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
 
 
 class TestEventSeparation:
