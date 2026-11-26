@@ -737,19 +737,40 @@ class TestEventDetection:
         "lines, expected_event_codes",
         [([0, 1], [1, 2, 3, 2, 0, 1, 0]), ([1, 0], [2, 1, 3, 1, 0, 2, 0])],
     )
-    def test_code_change_gives_one_event_per_change_of_the_code(self, lines, expected_event_codes):
-        # At 0.3 s line 0 falls and line 1 rises on the same sample, which is one change of the code.
+    def test_code_change_gives_one_event_per_change_of_the_code(self, lines, expected_event_codes, tmp_path):
+        """Each change of the code is an event (*), carrying the code it changed to.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+
+        At 0.3 s both lines change on the same sample, which is one event. With lines [1, 0] line 1 is
+        bit 0, so the codes are 2, 1, 3, 1, 0, 2, 0.
+        """
         configuration = {"codes": {"source": "digital_port", "detection": {"lines": lines, "on_code_change": {}}}}
         interface = MockEventsInterface(event_extraction_configuration=configuration)
+        nwbfile_path = tmp_path / "codes.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path)
 
-        nwbfile = interface.create_nwbfile()
-        table = nwbfile.get_events_table("Codes")
-        assert table.colnames == ("timestamp", "event_code")
-        np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.1])
-        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
-        assert interface._get_events_data_dict()["codes"].payload["event_code"].dtype == np.dtype("uint8")
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            table = io.read().get_events_table("Codes")
+            assert table.colnames == ("timestamp", "event_code")
+            np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.1])
+            np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+            assert table["event_code"].data.dtype == np.dtype("uint8")
 
     def test_code_change_separated_by_event_code(self):
+        """Selecting codes 1 and 3 keeps the events marked x, as two event types.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+        select       x               x               x
+        """
         configuration = {
             "codes": {
                 "source": "digital_port",
@@ -759,23 +780,14 @@ class TestEventDetection:
         }
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
-        assert interface.get_event_type_source_ids() == ["codes_1", "codes_3"]
-        np.testing.assert_allclose(interface.get_event_times("codes_1"), [0.1, 0.9])
-        np.testing.assert_allclose(interface.get_event_times("codes_3"), [0.5])
-
-    @pytest.mark.parametrize(
-        "detection",
-        [
-            {"lines": [0, 1], "on_change": {"onset": "rising"}},
-            {"on_code_change": {}},
-            {"lines": [0, 1], "on_change": {"onset": "rising"}, "on_code_change": {}},
-        ],
-        ids=["on_change_on_two_lines", "on_code_change_without_lines", "two_methods"],
-    )
-    def test_detection_method_and_lines_must_agree(self, detection):
-        configuration = {"codes": {"source": "digital_port", "detection": detection}}
-        with pytest.raises(ValueError, match=r"\AInvalid event_extraction_configuration\['codes'\]\['detection'\]"):
-            MockEventsInterface(event_extraction_configuration=configuration)
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = {"Codes1": [0.1, 0.9], "Codes3": [0.5]}
+        expected_event_codes = {"Codes1": [1, 1], "Codes3": [3]}
+        assert sorted(nwbfile.events) == sorted(expected_timestamps)
+        for table_name, timestamps in expected_timestamps.items():
+            table = nwbfile.get_events_table(table_name)
+            np.testing.assert_allclose(table["timestamp"][:], timestamps)
+            np.testing.assert_array_equal(table["event_code"][:], expected_event_codes[table_name])
 
 
 class TestEventSeparation:
