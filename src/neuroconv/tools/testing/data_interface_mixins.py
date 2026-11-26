@@ -21,13 +21,13 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from neuroconv.tools.events import _to_table_object_name
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.testing._nwbfile_times import (
     _get_nwbfile_durations,
