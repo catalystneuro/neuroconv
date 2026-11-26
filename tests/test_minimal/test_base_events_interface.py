@@ -781,13 +781,17 @@ class TestEventDetection:
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
         nwbfile = interface.create_nwbfile()
-        expected_timestamps = {"Codes1": [0.1, 0.9], "Codes3": [0.5]}
-        expected_event_codes = {"Codes1": [1, 1], "Codes3": [3]}
-        assert sorted(nwbfile.events) == sorted(expected_timestamps)
-        for table_name, timestamps in expected_timestamps.items():
-            table = nwbfile.get_events_table(table_name)
-            np.testing.assert_allclose(table["timestamp"][:], timestamps)
-            np.testing.assert_array_equal(table["event_code"][:], expected_event_codes[table_name])
+        expected_codes_1_timestamps = [0.1, 0.9]
+        expected_codes_3_timestamps = [0.5]
+        assert set(nwbfile.events) == {"Codes1", "Codes3"}
+
+        codes_1_table = nwbfile.get_events_table("Codes1")
+        np.testing.assert_allclose(codes_1_table["timestamp"][:], expected_codes_1_timestamps)
+        np.testing.assert_array_equal(codes_1_table["event_code"][:], [1, 1])
+
+        codes_3_table = nwbfile.get_events_table("Codes3")
+        np.testing.assert_allclose(codes_3_table["timestamp"][:], expected_codes_3_timestamps)
+        np.testing.assert_array_equal(codes_3_table["event_code"][:], [3])
 
 
 class TestEventSeparation:
