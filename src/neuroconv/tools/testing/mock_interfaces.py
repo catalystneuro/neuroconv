@@ -51,6 +51,7 @@ from ...tools.events import (
 from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
+    _detect_code_changes,
     _detect_events,
     _detect_occurrences,
     _samples_to_seconds,
@@ -373,7 +374,7 @@ class MockEventsInterface(BaseEventsInterface):
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
         event_sources = {name: {"supported_operations": ["separation"]} for name in source_names}
-        event_sources["digital_port"] = {"supported_operations": ["detection"]}
+        event_sources["digital_port"] = {"supported_operations": ["detection", "separation"]}
         event_sources["analog"] = {"supported_operations": ["signal_conditioning", "detection"]}
         return event_sources
 
@@ -390,11 +391,17 @@ class MockEventsInterface(BaseEventsInterface):
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
             # each mode's columns outright is what makes which-mode-covers-which readable.
-            if (
-                self._event_payload == "timestamps only"
-                or not self._get_events_data_dict()[event_type_source_id].payload
-            ):
-                # No value column at all. Occurrences detected on a sampled source carry no payload either.
+            payload = self._get_events_data_dict()[event_type_source_id].payload
+            if "event_code" in payload:
+                # Occurrences detected with on_code_change carry the code their lines changed to.
+                columns = {
+                    "event_code": {
+                        "column_name": "event_code",
+                        "description": "The code formed by the selected lines of digital_port.",
+                    },
+                }
+            elif self._event_payload == "timestamps only" or not payload:
+                # No value column at all. Occurrences detected on_change on a sampled source carry no payload.
                 columns = {}
             elif self._event_payload == "single value":
                 # One categorical column declaring labels and meanings: display labels plus a MeaningsTable.
@@ -485,10 +492,18 @@ class MockEventsInterface(BaseEventsInterface):
             else:
                 # A magnitude that is high from 0.2 to 0.4 s and from 0.6 to 0.8 s.
                 trace = np.array([0.0, 0.1, 4.9, 5.0, 0.2, 0.0, 5.1, 4.8, 0.1, 0.0])
+            entry = self._event_extraction_configuration[event_type_source_id]
+            if "on_code_change" in entry["detection"]:
+                timestamps, event_codes = _detect_code_changes(
+                    entry=entry, trace=trace, timestamps=0.1 * np.arange(len(trace))
+                )
+                return _EventsData(
+                    event_type_source_id=event_type_source_id,
+                    timestamps=timestamps,
+                    payload={"event_code": event_codes},
+                )
             timestamps, durations = _detect_occurrences(
-                entry=self._event_extraction_configuration[event_type_source_id],
-                trace=trace,
-                timestamps=0.1 * np.arange(len(trace)),
+                entry=entry, trace=trace, timestamps=0.1 * np.arange(len(trace))
             )
             return _EventsData(event_type_source_id=event_type_source_id, timestamps=timestamps, durations=durations)
 

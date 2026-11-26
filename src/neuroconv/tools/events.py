@@ -19,6 +19,70 @@ _CUTS = ("bits", "binarize")
 _BINARIZE_METHODS = ("midpoint",)
 _SPEC_KEYS = ("signal_conditioning", "detection", "event_time_convention", "event_name")
 
+_EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
+    "type": ["object", "null"],
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "source": {"type": "string", "minLength": 1},
+            "format_options": {"type": "object"},
+            "signal_conditioning": {
+                "type": "object",
+                "required": ["binarize"],
+                "properties": {"binarize": {"anyOf": [{"const": "midpoint"}, {"type": "number"}]}},
+                "additionalProperties": False,
+            },
+            "detection": {
+                "type": "object",
+                # One method per entry. `on_change` watches one line, and `on_code_change` the code that the
+                # state of several lines forms, so it names them.
+                "oneOf": [{"required": ["on_change"]}, {"required": ["on_code_change"]}],
+                "if": {"required": ["on_change"]},
+                "then": {"properties": {"lines": {"maxItems": 1}}},
+                "dependencies": {"on_code_change": ["lines"]},
+                "properties": {
+                    "lines": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 0},
+                        "minItems": 1,
+                    },
+                    "on_change": {
+                        "type": "object",
+                        "required": ["onset"],
+                        "properties": {
+                            "onset": {"enum": ["rising", "falling", "either"]},
+                            "end": {"enum": ["rising", "falling"]},
+                        },
+                        "additionalProperties": False,
+                    },
+                    "on_code_change": {"type": "object", "properties": {}, "additionalProperties": False},
+                    "timestamp_estimate": {
+                        "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
+                    },
+                },
+                "additionalProperties": False,
+            },
+            "separation": {
+                "type": "object",
+                "required": ["by_payload_fields"],
+                "properties": {
+                    "by_payload_fields": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                        "minItems": 1,
+                        "maxItems": 2,
+                        "uniqueItems": True,
+                    },
+                    "select": {"type": "array"},
+                },
+                "additionalProperties": False,
+            },
+        },
+        "additionalProperties": False,
+    },
+}
+
 
 def _validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
     """Validate a ``detection_configuration``, raising ``ValueError`` on a bad entry.

@@ -8,67 +8,8 @@ from pynwb.file import NWBFile
 
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
-from ...tools.events import _add_events_to_nwbfile
+from ...tools.events import _EVENT_EXTRACTION_CONFIGURATION_SCHEMA, _add_events_to_nwbfile
 from ...tools.signal_processing import _ON_CHANGE_READINGS
-
-_EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
-    "type": ["object", "null"],
-    "propertyNames": {"type": "string", "minLength": 1},
-    "additionalProperties": {
-        "type": "object",
-        "properties": {
-            "source": {"type": "string", "minLength": 1},
-            "format_options": {"type": "object"},
-            "signal_conditioning": {
-                "type": "object",
-                "required": ["binarize"],
-                "properties": {"binarize": {"anyOf": [{"const": "midpoint"}, {"type": "number"}]}},
-                "additionalProperties": False,
-            },
-            "detection": {
-                "type": "object",
-                "required": ["on_change"],
-                "properties": {
-                    "lines": {
-                        "type": "array",
-                        "items": {"type": "integer", "minimum": 0},
-                        "minItems": 1,
-                        "maxItems": 1,
-                    },
-                    "on_change": {
-                        "type": "object",
-                        "required": ["onset"],
-                        "properties": {
-                            "onset": {"enum": ["rising", "falling", "either"]},
-                            "end": {"enum": ["rising", "falling"]},
-                        },
-                        "additionalProperties": False,
-                    },
-                    "timestamp_estimate": {
-                        "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
-                    },
-                },
-                "additionalProperties": False,
-            },
-            "separation": {
-                "type": "object",
-                "required": ["by_payload_fields"],
-                "properties": {
-                    "by_payload_fields": {
-                        "type": "array",
-                        "items": {"type": "string", "minLength": 1},
-                        "minItems": 1,
-                        "maxItems": 2,
-                        "uniqueItems": True,
-                    },
-                    "select": {"type": "array"},
-                },
-                "additionalProperties": False,
-            },
-        },
-        "additionalProperties": False,
-    },
-}
 
 
 @dataclass
@@ -230,7 +171,7 @@ class BaseEventsInterface(BaseDataInterface):
                 )
 
             detection = entry.get("detection")
-            if detection is not None:
+            if detection is not None and "on_change" in detection:
                 onset = detection["on_change"]["onset"]
                 end = detection["on_change"].get("end")
                 if (onset, end) not in _ON_CHANGE_READINGS:

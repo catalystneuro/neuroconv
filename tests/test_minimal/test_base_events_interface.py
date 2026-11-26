@@ -733,6 +733,66 @@ class TestEventDetection:
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
 
+    @pytest.mark.parametrize(
+        "lines, expected_event_codes",
+        [([0, 1], [1, 2, 3, 2, 0, 1, 0]), ([1, 0], [2, 1, 3, 1, 0, 2, 0])],
+    )
+    def test_code_change_gives_one_event_per_change_of_the_code(self, lines, expected_event_codes, tmp_path):
+        """Each change of the code is an event (*), carrying the code it changed to.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+
+        At 0.3 s both lines change on the same sample, which is one event. With lines [1, 0] line 1 is
+        bit 0, so the codes are 2, 1, 3, 1, 0, 2, 0.
+        """
+        configuration = {"codes": {"source": "digital_port", "detection": {"lines": lines, "on_code_change": {}}}}
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+        nwbfile_path = tmp_path / "codes.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path)
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            table = io.read().get_events_table("Codes")
+            assert table.colnames == ("timestamp", "event_code")
+            np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.1])
+            np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+            assert table["event_code"].data.dtype == np.dtype("uint8")
+
+    def test_code_change_separated_by_event_code(self):
+        """Selecting codes 1 and 3 keeps the events marked x, as two event types.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+        select       x               x               x
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_code_change": {}},
+                "separation": {"by_payload_fields": ["event_code"], "select": [1, 3]},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_codes_1_timestamps = [0.1, 0.9]
+        expected_codes_3_timestamps = [0.5]
+        assert set(nwbfile.events) == {"Codes1", "Codes3"}
+
+        codes_1_table = nwbfile.get_events_table("Codes1")
+        np.testing.assert_allclose(codes_1_table["timestamp"][:], expected_codes_1_timestamps)
+        np.testing.assert_array_equal(codes_1_table["event_code"][:], [1, 1])
+
+        codes_3_table = nwbfile.get_events_table("Codes3")
+        np.testing.assert_allclose(codes_3_table["timestamp"][:], expected_codes_3_timestamps)
+        np.testing.assert_array_equal(codes_3_table["event_code"][:], [3])
+
 
 class TestEventSeparation:
     """``separation`` in ``event_extraction_configuration``, applied by ``neuroconv.tools.events._separate_events``."""
