@@ -649,8 +649,9 @@ class TestEventSourceResolution:
 class TestEventDetection:
     """``detection`` on the sampled sources of ``MockEventsInterface``.
 
-    ``digital_port`` holds two lines sampled every 0.1 s. Line 0 rises at 0.1, 0.5 and 0.9 s and falls at
-    0.3, 0.7 and 1.1 s. Line 1 rises at 0.3 s and falls at 0.8 s. ``analog`` is a magnitude that crosses
+    ``digital_port`` holds three lines sampled every 0.1 s. Line 0 rises at 0.1, 0.5 and 0.9 s and falls at
+    0.3, 0.7 and 1.1 s. Line 1 rises at 0.3 s and falls at 0.8 s. Line 2, a strobe, rises at 0.2, 0.4, 0.7
+    and 1.0 s and falls one sample later. ``analog`` is a magnitude that crosses
     2.5 upward at 0.2 and 0.6 s and downward at 0.4 and 0.8 s.
     """
 
@@ -792,6 +793,60 @@ class TestEventDetection:
         codes_3_table = nwbfile.get_events_table("Codes3")
         np.testing.assert_allclose(codes_3_table["timestamp"][:], expected_codes_3_timestamps)
         np.testing.assert_array_equal(codes_3_table["event_code"][:], [3])
+
+    def test_strobe_reads_the_code_at_each_strobe(self):
+        """Each rise of the strobe on line 2 is an event (*), carrying the code of lines 0 and 1 at that sample.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        line 2   0   0   1   0   1   0   0   1   0   0   1   0
+        events           *       *           *           *
+
+        The strobes at 0.4 and 0.7 s both find code 2, which is two events. The code 3 at 0.5 s is never read.
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_strobe": {"line": 2, "onset": "rising"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.2, 0.4, 0.7, 1.0]
+        expected_event_codes = [1, 2, 2, 1]
+        table = nwbfile.get_events_table("Codes")
+        assert table.colnames == ("timestamp", "event_code")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+
+    def test_strobe_reads_the_code_at_each_falling_strobe(self):
+        """Each fall of the strobe on line 2 is an event (*), carrying the code of lines 0 and 1 at that sample.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        line 2   0   0   1   0   1   0   0   1   0   0   1   0
+        events               *       *           *           *
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_strobe": {"line": 2, "onset": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.3, 0.5, 0.8, 1.1]
+        expected_event_codes = [2, 3, 0, 0]
+        table = nwbfile.get_events_table("Codes")
+        assert table.colnames == ("timestamp", "event_code")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
 
 
 class TestEventSeparation:
