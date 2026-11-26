@@ -14,7 +14,6 @@ class PlexonEventsInterface(BaseEventsInterface):
     """
 
     display_name = "Plexon Events"
-    _supports_event_extraction_configuration = True
     keywords = ("events", "Plexon")
     associated_suffixes = (".plx",)
     info = "Interface for converting discrete events from Plexon PLX files."

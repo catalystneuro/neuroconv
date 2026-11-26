@@ -379,6 +379,67 @@ def _samples_to_seconds(
     return onsets, durations
 
 
+# The reading of `_detect_events` that each `on_change` onset and end of an `event_extraction_configuration`
+# entry ask for.
+_ON_CHANGE_READINGS = {
+    ("rising", None): "rising",
+    ("falling", None): "falling",
+    ("either", None): "value_change",
+    ("rising", "falling"): "high_period",
+    ("falling", "rising"): "low_period",
+}
+
+# The convention of `_samples_to_seconds` that each `timestamp_estimate` of an `event_extraction_configuration`
+# entry asks for.
+_TIMESTAMP_ESTIMATES = {
+    "first_sample_after_change": "sample_after_transition",
+    "last_sample_before_change": "sample_before_transition",
+    "halfway_between_samples": "halfway_between_samples",
+}
+
+
+def _detect_occurrences(
+    entry: dict, trace: np.ndarray, timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray]
+) -> tuple[np.ndarray, np.ndarray | None]:
+    """Detect the occurrences of one resolved ``event_extraction_configuration`` entry on a sampled signal.
+
+    ``signal_conditioning`` cuts an analog signal into a line. Otherwise ``detection.lines`` picks the line
+    out of the source, which is line 0 when the source has a single one. ``on_change`` then says which
+    changes of that line are events, and ``timestamp_estimate`` which sample time each takes.
+
+    Parameters
+    ----------
+    entry : dict
+        The entry as ``BaseEventsInterface._resolve_event_sources`` returns it.
+    trace : numpy.ndarray
+        The samples of the entry's source: a magnitude for an analog signal, or one integer per sample whose
+        bit ``k`` is line ``k`` for a digital source.
+    timestamps : numpy.ndarray or callable
+        The time of each sample, or a function from sample indices to times, as :func:`_samples_to_seconds`
+        takes them.
+
+    Returns
+    -------
+    onsets : numpy.ndarray
+        The time of each occurrence, in seconds.
+    durations : numpy.ndarray or None
+        The duration of each occurrence when ``on_change`` has an ``end``, otherwise ``None``.
+    """
+    detection = entry["detection"]
+    if "signal_conditioning" in entry:
+        line = _condition_signal(trace, entry["signal_conditioning"])
+    else:
+        line = _condition_signal(trace, {"bits": detection.get("lines", [0])})
+    reading = _ON_CHANGE_READINGS[(detection["on_change"]["onset"], detection["on_change"].get("end"))]
+    onset_samples, offset_samples = _detect_events(line, reading)
+    return _samples_to_seconds(
+        onset_samples=onset_samples,
+        offset_samples=offset_samples,
+        timestamps=timestamps,
+        event_time_convention=_TIMESTAMP_ESTIMATES[detection.get("timestamp_estimate", "first_sample_after_change")],
+    )
+
+
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,

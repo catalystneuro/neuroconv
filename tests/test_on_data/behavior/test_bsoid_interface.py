@@ -16,7 +16,7 @@ from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     MoseqKeyPointsInterface,
 )
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import EthogramInterfaceTestMixin
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -56,7 +56,7 @@ def read_labels_and_timestamps(file_path, label_rows, frame_index_column, frame_
 # (`bout_lengths` or `bsoid_runlen`).
 
 
-class TestBSOiDUmap(DataInterfaceTestMixin):
+class TestBSOiDUmap(EthogramInterfaceTestMixin):
     """bsoid_umap leaves the label of the two DeepLabCut header rows blank, so the first label is on the first frame."""
 
     data_interface_cls = BSOiDInterface
@@ -79,6 +79,7 @@ class TestBSOiDUmap(DataInterfaceTestMixin):
     expected_first_label = "30"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
@@ -97,7 +98,7 @@ class TestBSOiDUmap(DataInterfaceTestMixin):
         assert list(bouts["label"]) == [str(bout[2]) for bout in expected]
 
 
-class TestBSOiDAppVersion14(DataInterfaceTestMixin):
+class TestBSOiDAppVersion14(EthogramInterfaceTestMixin):
     """The app of version 1.4 leaves the header rows blank as bsoid_umap does."""
 
     data_interface_cls = BSOiDInterface
@@ -114,6 +115,7 @@ class TestBSOiDAppVersion14(DataInterfaceTestMixin):
     expected_first_label = "30"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
@@ -132,7 +134,7 @@ class TestBSOiDAppVersion14(DataInterfaceTestMixin):
         assert list(bouts["label"]) == [str(bout[2]) for bout in expected]
 
 
-class TestBSOiDAppVersion15DeepLabCutCsv(DataInterfaceTestMixin):
+class TestBSOiDAppVersion15DeepLabCutCsv(EthogramInterfaceTestMixin):
     """The app of version 1.5 labels the two header rows, so each label sits two rows before its frame."""
 
     data_interface_cls = BSOiDInterface
@@ -149,6 +151,7 @@ class TestBSOiDAppVersion15DeepLabCutCsv(DataInterfaceTestMixin):
     expected_first_label = "28"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
@@ -167,7 +170,7 @@ class TestBSOiDAppVersion15DeepLabCutCsv(DataInterfaceTestMixin):
         assert list(bouts["label"]) == [str(bout[2]) for bout in expected]
 
 
-class TestBSOiDAppVersion15DeepLabCutH5(DataInterfaceTestMixin):
+class TestBSOiDAppVersion15DeepLabCutH5(EthogramInterfaceTestMixin):
     """From a DeepLabCut `.h5` the file has no header rows and the unnamed index holds the frame index."""
 
     data_interface_cls = BSOiDInterface
@@ -184,6 +187,7 @@ class TestBSOiDAppVersion15DeepLabCutH5(DataInterfaceTestMixin):
     expected_first_label = "31"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
@@ -202,7 +206,7 @@ class TestBSOiDAppVersion15DeepLabCutH5(DataInterfaceTestMixin):
         assert list(bouts["label"]) == [str(bout[2]) for bout in expected]
 
 
-class TestBSOiDAppVersion15SleapAnalysisH5(DataInterfaceTestMixin):
+class TestBSOiDAppVersion15SleapAnalysisH5(EthogramInterfaceTestMixin):
     """From a SLEAP analysis `.h5`, with a free-text prefix and frames without pose that still carry a label."""
 
     data_interface_cls = BSOiDInterface
@@ -221,6 +225,7 @@ class TestBSOiDAppVersion15SleapAnalysisH5(DataInterfaceTestMixin):
     expected_first_label = "0"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
@@ -239,7 +244,7 @@ class TestBSOiDAppVersion15SleapAnalysisH5(DataInterfaceTestMixin):
         assert list(bouts["label"]) == [str(bout[2]) for bout in expected]
 
 
-class TestBSOiDFrameIndexFrom300(DataInterfaceTestMixin):
+class TestBSOiDFrameIndexFrom300(EthogramInterfaceTestMixin):
     """A DeepLabCut CSV trimmed before prediction, whose frame index starts at 300, so the first bout starts at 12 s.
 
     Exported without the run-length file, so the number of bouts is counted from its labels.
@@ -266,6 +271,7 @@ class TestBSOiDFrameIndexFrom300(DataInterfaceTestMixin):
     expected_first_label = "4"
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         labels, timestamps = read_labels_and_timestamps(
             self.file_path,
             self.label_rows,
