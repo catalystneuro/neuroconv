@@ -35,12 +35,12 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
             },
             "detection": {
                 "type": "object",
-                # One method per entry. `on_change` watches one line, and `on_code_change` the code that the
-                # state of several lines forms, so it names them.
-                "oneOf": [{"required": ["on_change"]}, {"required": ["on_code_change"]}],
+                # One method per entry. `on_change` watches one line. `on_code_change` and `on_strobe` read the
+                # code that the state of several lines forms, so they name them.
+                "oneOf": [{"required": ["on_change"]}, {"required": ["on_code_change"]}, {"required": ["on_strobe"]}],
                 "if": {"required": ["on_change"]},
                 "then": {"properties": {"lines": {"maxItems": 1}}},
-                "dependencies": {"on_code_change": ["lines"]},
+                "dependencies": {"on_code_change": ["lines"], "on_strobe": ["lines"]},
                 "properties": {
                     "lines": {
                         "type": "array",
@@ -57,6 +57,15 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
                         "additionalProperties": False,
                     },
                     "on_code_change": {"type": "object", "properties": {}, "additionalProperties": False},
+                    "on_strobe": {
+                        "type": "object",
+                        "required": ["line", "onset"],
+                        "properties": {
+                            "line": {"type": "integer", "minimum": 0},
+                            "onset": {"enum": ["rising", "falling"]},
+                        },
+                        "additionalProperties": False,
+                    },
                     "timestamp_estimate": {
                         "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
                     },
