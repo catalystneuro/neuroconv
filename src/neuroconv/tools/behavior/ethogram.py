@@ -191,6 +191,7 @@ def _add_ethogram_bouts_to_nwbfile(
     source=None,
     source_pose=None,
     source_video=None,
+    source_events=None,
     bout_columns: dict[str, dict] | None = None,
     column_meanings: dict[str, dict] | None = None,
     extend_bouts: bool = False,
@@ -220,6 +221,8 @@ def _add_ethogram_bouts_to_nwbfile(
     source, source_pose, source_video : optional
         Objects the bouts were derived from (the faithful producer, an ``ndx-pose``
         ``PoseEstimation``, and an ``ImageSeries`` video), linked from the bout table.
+    source_events : EthogramEvents, optional
+        The record of scored occurrences the bouts are the closed states of.
     bout_columns : dict, optional
         Extra per-bout columns, as ``{name: {"description": str, "data": array-like, "index": bool}}``, with
         one value per bout in ``data``.
@@ -255,6 +258,7 @@ def _add_ethogram_bouts_to_nwbfile(
             source=source,
             source_pose=source_pose,
             source_video=source_video,
+            source_events=source_events,
             ethogram=catalogue,
         )
         for name, column in bout_columns.items():

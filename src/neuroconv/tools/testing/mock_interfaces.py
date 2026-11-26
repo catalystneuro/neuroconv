@@ -16,6 +16,7 @@ from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
 from ...datainterfaces.behavior.basebehavioralsegmentationinterface import (
     BaseBehavioralSegmentationInterface,
 )
+from ...datainterfaces.behavior.baseethograminterface import BaseEthogramInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -896,6 +897,92 @@ class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
             labeling_method="automated",
             ethogram_metadata_key=self.metadata_key,
         )
+        return metadata
+
+
+class MockEthogramInterface(BaseEthogramInterface, BaseEventsInterface):
+    """
+    A mock manual scorer, for testing purposes: an events interface whose occurrences are written as an
+    ``EthogramEvents`` with its catalogue and the bouts derived from its closed states.
+
+    Scores three behaviors: ``Walking``, a state closed twice; ``Grooming``, a state closed once and left
+    open once; and ``Glancing``, a point.
+    """
+
+    display_name = "Mock Ethogram"
+    keywords = ("behavior", "ethogram", "mock")
+    associated_suffixes = []
+    info = "Mock interface for manual behavior scoring testing."
+
+    labeling_method = "manual"
+    source_software = "MockScorer"
+
+    def __init__(self, *, metadata_key: str | None = None, verbose: bool = False):
+        """
+        Initialize a mock manual scorer.
+
+        Parameters
+        ----------
+        metadata_key : str, optional
+            Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]``,
+            ``metadata["Behavior"]["EthogramBouts"]``, ``metadata["Events"]["EventTables"]`` and
+            ``metadata["Events"]``. Defaults to ``"mock_ethogram"``.
+        verbose : bool, default: False
+            Control verbosity.
+        """
+        self.metadata_key = metadata_key or "mock_ethogram"
+        super().__init__(verbose=verbose)
+
+    def _get_events_data_dict(self) -> dict[str, _EventsData]:
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+        self._events_data_dict = {
+            "Walking": _EventsData(
+                event_type_source_id="Walking", timestamps=np.array([1.0, 5.0]), durations=np.array([2.0, 1.5])
+            ),
+            "Grooming": _EventsData(
+                event_type_source_id="Grooming", timestamps=np.array([3.5, 8.0]), durations=np.array([1.0, np.nan])
+            ),
+            "Glancing": _EventsData(event_type_source_id="Glancing", timestamps=np.array([0.5, 4.0, 7.0])),
+        }
+        return self._events_data_dict
+
+    def _get_behaviors(self) -> list[dict]:
+        return [
+            dict(behavior="Walking", definition="The subject walks.", behavior_type="state"),
+            dict(behavior="Grooming", definition="The subject grooms.", behavior_type="state"),
+            dict(behavior="Glancing", definition="The subject glances at the object.", behavior_type="point"),
+        ]
+
+    def _get_ethogram_events(self) -> dict[str, _EventsData]:
+        return self._get_aligned_events_data_dict()
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        metadata["Behavior"]["Ethograms"][self.metadata_key] = dict(
+            name="MockEthogram",
+            description="Mock coding scheme.",
+        )
+        metadata["Behavior"]["EthogramBouts"][self.metadata_key] = dict(
+            name="MockEthogramBouts",
+            description="Mock closed states as bouts.",
+            labeling_method="manual",
+            ethogram_metadata_key=self.metadata_key,
+        )
+        metadata["Events"]["EventTables"][self.metadata_key] = dict(
+            type="EthogramEvents",
+            table_name="MockEthogramEvents",
+            description="Mock scored occurrences.",
+            ethogram_metadata_key=self.metadata_key,
+            labeling_method="manual",
+            source_software=self.source_software,
+        )
+        for event_type_source_id in self.get_event_type_source_ids():
+            metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = dict(
+                event_name=event_type_source_id,
+                table_metadata_key=self.metadata_key,
+            )
         return metadata
 
 

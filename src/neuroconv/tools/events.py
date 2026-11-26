@@ -398,6 +398,11 @@ def _add_events_to_nwbfile(nwbfile: NWBFile, *, events_data: dict, metadata: dic
 
     The writer behind ``BaseEventsInterface.add_to_nwbfile``, whose docstring describes the tables it builds.
 
+    An ``EventTables`` entry whose ``type`` is ``"EthogramEvents"`` builds an ``ndx-ethogram`` ``EthogramEvents``
+    instead of a plain ``EventsTable``, as the ``type`` of a ``Devices`` entry picks a device subclass. Its rows name
+    their behavior in ``label`` instead of ``event_type``, and it links the catalogue its ``ethogram_metadata_key``
+    names, which must already be in the file.
+
     Parameters
     ----------
     nwbfile : NWBFile
@@ -514,13 +519,16 @@ def _add_events_to_nwbfile(nwbfile: NWBFile, *, events_data: dict, metadata: dic
             # entry to name and describe a pooled table.
             table_name, description = _to_table_object_name(table_metadata_key), ""
 
+        is_ethogram_events = declared_entry is not None and declared_entry.get("type") == "EthogramEvents"
+        # An ethogram record names each row's behavior in its required `label` column, the catalogue's term.
+        type_column_name = "label" if is_ethogram_events else "event_type"
         existing_table = nwbfile.events.get(table_name) if nwbfile.events is not None else None
         # The user asks to combine several event types into one table by declaring an EventTables entry
         # or by routing more than one type to the same table_metadata_key; either needs an event_type
         # column. A table another interface already wrote continues such a combine.
         wants_merge = declared_entry is not None or len(event_type_source_ids) > 1
         is_merge = wants_merge or existing_table is not None
-        if existing_table is not None and "event_type" not in existing_table.colnames:
+        if existing_table is not None and type_column_name not in existing_table.colnames:
             if wants_merge:
                 # Combining was intended, but the existing table was written holding a single event type,
                 # so it has no event_type column and its rows' identity was never recorded (and cannot be
@@ -554,13 +562,52 @@ def _add_events_to_nwbfile(nwbfile: NWBFile, *, events_data: dict, metadata: dic
             )
 
         table_owners.setdefault(table_name, []).extend(event_type_source_ids)
-        table = existing_table if existing_table is not None else EventsTable(name=table_name, description=description)
+        if existing_table is not None:
+            table = existing_table
+        elif is_ethogram_events:
+            from ndx_ethogram import EthogramEvents
+
+            # The record links its catalogue as a device links its model: by key, to an object already in
+            # the file. ndx-ethogram requires the link, so the catalogue is written before the events.
+            ethogram_metadata_key = declared_entry["ethogram_metadata_key"]
+            _validate_metadata_key(
+                metadata, metadata_path=("Behavior", "Ethograms"), metadata_key=ethogram_metadata_key
+            )
+            catalogue_name = metadata["Behavior"]["Ethograms"][ethogram_metadata_key]["name"]
+            behavior_module = nwbfile.processing.get("behavior")
+            catalogue = behavior_module.data_interfaces.get(catalogue_name) if behavior_module is not None else None
+            if catalogue is None:
+                raise ValueError(
+                    f"The events table '{table_name}' links the catalogue '{catalogue_name}', which is not in the "
+                    "file's behavior module. Write the catalogue before the events that link it."
+                )
+            table = EthogramEvents(
+                name=table_name,
+                description=description,
+                labeling_method=declared_entry["labeling_method"],
+                ethogram=catalogue,
+                source_software=declared_entry.get("source_software"),
+                annotator=declared_entry.get("annotator"),
+            )
+        else:
+            table = EventsTable(name=table_name, description=description)
+        if is_ethogram_events:
+            catalogued_behaviors = set(table.ethogram["behavior"].data)
+            for event_type_source_id in event_type_source_ids:
+                event_name = event_types[event_type_source_id]["event_name"]
+                if event_name not in catalogued_behaviors:
+                    raise ValueError(
+                        f"Event type '{event_type_source_id}' writes the label '{event_name}' into "
+                        f"'{table_name}', but its catalogue '{table.ethogram.name}' has no behavior of that "
+                        "name. An event_name renamed in metadata must be renamed in the catalogue too."
+                    )
         _append_events_to_table(
             table=table,
             events_data=events_data,
             event_types=event_types,
             event_type_source_ids=event_type_source_ids,
             is_merge=is_merge,
+            type_column_name=type_column_name,
         )
         if existing_table is None:
             nwbfile.add_events_table(table)
@@ -601,6 +648,7 @@ def _append_events_to_table(
     event_types: dict,
     event_type_source_ids: list,
     is_merge: bool,
+    type_column_name: str,
 ) -> None:
     """Append this interface's events to ``table``, creating whatever columns that data needs.
 
@@ -608,6 +656,8 @@ def _append_events_to_table(
     table) with a ``MeaningsTable`` for any categorical column, sets up or extends the ``event_type``
     discriminator and its ``MeaningsTable`` when merging, then adds the rows. The caller owns the
     table's identity, registration, and final re-sort; this method only fills the table it is handed.
+    ``type_column_name`` is the column holding each row's ``event_name``: ``event_type``, or ``label`` in an
+    ``EthogramEvents``.
     """
     event_data = events_data
 
@@ -686,9 +736,9 @@ def _append_events_to_table(
     stays_empty = n_existing == 0 and not rows
 
     # A fresh merged table needs the discriminator column before its MeaningsTable and rows.
-    if is_merge and "event_type" not in table.colnames:
+    if is_merge and type_column_name not in table.colnames:
         table.add_column(
-            name="event_type",
+            name=type_column_name,
             description="The event type of each event.",
             data=np.array([], dtype=str) if stays_empty else [""] * n_existing,
         )
@@ -773,8 +823,9 @@ def _append_events_to_table(
     # The discriminator carries each type's event_name; create or extend its MeaningsTable (extending
     # lets a second interface add its own types on append) mapping event_name -> event_description.
     # Only a type the user described earns a row, so a merge nobody annotated gets no MeaningsTable
-    # at all rather than one restating each event_name back at the reader.
-    if is_merge:
+    # at all rather than one restating each event_name back at the reader. An ethogram record's labels
+    # are defined by its catalogue, so its label column gets none.
+    if is_merge and type_column_name == "event_type":
         column = table["event_type"]
         meanings_table = next(
             (other for other in (table.meanings_tables or {}).values() if other.target is column),
@@ -801,13 +852,13 @@ def _append_events_to_table(
 
     # Add this interface's rows. A row fills its own columns; every other column on the table (from
     # this or a prior interface) gets that column's fill value ("" for a string column, else NaN).
-    value_column_names = [name for name in table.colnames if name not in ("timestamp", "duration", "event_type")]
+    value_column_names = [name for name in table.colnames if name not in ("timestamp", "duration", type_column_name)]
     for timestamp, event_name, duration, cells in rows:
         row_kwargs = {"timestamp": timestamp}
         if table_has_duration:
             row_kwargs["duration"] = duration
         if is_merge:
-            row_kwargs["event_type"] = event_name
+            row_kwargs[type_column_name] = event_name
         for column_name in value_column_names:
             if column_name in cells:
                 row_kwargs[column_name] = cells[column_name]

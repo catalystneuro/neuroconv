@@ -359,6 +359,17 @@ class BaseEventsInterface(BaseDataInterface):
                         "properties": {
                             "table_name": {"type": "string"},  # the table's NWB object name
                             "description": {"type": "string"},
+                            # The table's class, as the `type` of a Devices entry picks a device subclass.
+                            # An EthogramEvents takes the four fields below it.
+                            "type": {"type": "string", "enum": ["EventsTable", "EthogramEvents"]},
+                            "ethogram_metadata_key": {
+                                "type": "string",
+                                "description": "Key of the Behavior/Ethograms entry whose catalogue the "
+                                "EthogramEvents labels are drawn from.",
+                            },
+                            "labeling_method": {"type": "string", "enum": ["manual", "automated", "curated"]},
+                            "annotator": {"type": "string", "description": "Who scored the events."},
+                            "source_software": {"type": "string", "description": "The tool that scored them."},
                         },
                     },
                 },
@@ -453,7 +464,13 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        events_data = {
+        _add_events_to_nwbfile(
+            nwbfile, events_data=self._get_aligned_events_data_dict(), metadata=metadata, metadata_key=self.metadata_key
+        )
+
+    def _get_aligned_events_data_dict(self) -> dict[str, _EventsData]:
+        """Return the events keyed by ``event_type_source_id``, with timestamps and durations on the current clock."""
+        return {
             event_type_source_id: replace(
                 event,
                 timestamps=self.get_event_times(event_type_source_id),
@@ -461,4 +478,3 @@ class BaseEventsInterface(BaseDataInterface):
             )
             for event_type_source_id, event in self._get_events_data_dict().items()
         }
-        _add_events_to_nwbfile(nwbfile, events_data=events_data, metadata=metadata, metadata_key=self.metadata_key)
