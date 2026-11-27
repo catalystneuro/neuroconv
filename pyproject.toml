@@ -170,6 +170,7 @@ behavior = [
 ]
 
 ## Events
+axon_events = ["dclimplode>=0.0.1.0"]
 csv_events = [
     # CSV events now write native pynwb 4.0 EventsTable objects and need only core pandas + pynwb>=4.0;
     # kept as a stable install alias so `neuroconv[csv_events]` and `neuroconv[events]` remain valid.
@@ -191,6 +192,7 @@ pyphotometry_events = [
     # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
 ]
 events = [
+    "neuroconv[axon_events]",
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[medpc]",

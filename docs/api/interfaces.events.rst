@@ -1,6 +1,10 @@
 Events
 ======
 
+Axon Events
+-----------
+.. automodule:: neuroconv.datainterfaces.icephys.axon.axoneventsinterface
+
 CSV Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.csv_events.csveventsdatainterface

@@ -6,6 +6,8 @@ Convert intracellular electrophysiology recorded in Axon Binary Format (ABF) to 
 One interface instance corresponds to one channel: one electrode's recording in one ABF file. You tell it
 which recorded channel is the response and how it was clamped (the arguments are explained below). Combine
 several channels in a converter for a dual-patch or multi-file recording (see below).
+To include tags from the same recording, add one ``AxonEventsInterface`` per file, even when
+several electrodes share it. See :doc:`Axon tags <../events/axon_events>`.
 
 Install NeuroConv with the additional dependencies necessary for reading Axon Binary Format (ABF) data.
 
