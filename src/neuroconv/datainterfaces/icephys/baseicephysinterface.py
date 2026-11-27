@@ -11,6 +11,7 @@ from ...tools.icephys import (
     _add_intracellular_recordings_to_nwbfile,
     _add_patch_clamp_series_to_nwbfile,
     _IcephysSeriesData,
+    _IcephysStimulusTemplateData,
 )
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 
@@ -18,7 +19,9 @@ from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_k
 class BaseIcephysInterface(BaseDataInterface):
     """Base interface for patch-clamp data written as NWB icephys series.
 
-    Concrete interfaces return source data through :meth:`_get_icephys_series_data`. This base owns NWB object
+    Concrete interfaces return source data through :meth:`_get_icephys_series_data`, and a stimulus template through
+    :meth:`_get_icephys_stimulus_template_data` when the source specifies one, with its metadata entry named by
+    ``_stimulus_template_metadata_key``, one entry per waveform and electrode. This base owns NWB object
     construction, metadata-linked electrode resolution, and the per-sweep ``IntracellularRecordings`` rows.
     The hierarchy above those rows remains a converter responsibility, once every interface has contributed.
     """
@@ -32,7 +35,7 @@ class BaseIcephysInterface(BaseDataInterface):
         return self._alignment
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
-        """Write this interface's response, optional stimulus, and sweep rows to an NWB file."""
+        """Write this interface's response, optional stimulus and stimulus template, and sweep rows to an NWB file."""
         if metadata is None:
             metadata = self.get_metadata()
 
@@ -49,6 +52,8 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
         response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
+        stimulus_template = self._get_icephys_stimulus_template_data()
+        stimulus_template_data = None if stimulus_template is None else stimulus_template.to_series_data()
         timestamps = self.temporal_alignment[self._alignment_key].get_times()
         if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
             raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
@@ -57,6 +62,9 @@ class BaseIcephysInterface(BaseDataInterface):
         if stimulus_data is not None:
             stimulus_data.timestamps = self.temporal_alignment[self._stimulus_alignment_key].get_times()
             stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
+        stimulus_template_sweep_sample_ranges = None
+        if stimulus_template_data is not None:
+            stimulus_template_sweep_sample_ranges = stimulus_template_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -64,7 +72,7 @@ class BaseIcephysInterface(BaseDataInterface):
             series_data=response_data,
             electrode=electrode,
             mode=self._mode,
-            is_stimulus=False,
+            role="response",
         )
 
         stimulus_series = None
@@ -76,7 +84,19 @@ class BaseIcephysInterface(BaseDataInterface):
                 series_data=stimulus_data,
                 electrode=electrode,
                 mode=self._mode,
-                is_stimulus=True,
+                role="stimulus",
+            )
+
+        stimulus_template_series = None
+        if stimulus_template_data is not None:
+            stimulus_template_series = _add_patch_clamp_series_to_nwbfile(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                series_metadata_key=self._stimulus_template_metadata_key,
+                series_data=stimulus_template_data,
+                electrode=electrode,
+                mode=self._mode,
+                role="stimulus_template",
             )
 
         _add_intracellular_recordings_to_nwbfile(
@@ -85,6 +105,8 @@ class BaseIcephysInterface(BaseDataInterface):
             response_series=response_series,
             stimulus_series=stimulus_series,
             stimulus_sweep_sample_ranges=stimulus_sweep_sample_ranges,
+            stimulus_template_series=stimulus_template_series,
+            stimulus_template_sweep_sample_ranges=stimulus_template_sweep_sample_ranges,
             sweep_sample_ranges=sweep_sample_ranges,
             protocol_run=self._run_identity,
             stimulus_type=self._get_stimulus_type(),
@@ -98,4 +120,11 @@ class BaseIcephysInterface(BaseDataInterface):
 
     def _get_stimulus_type(self) -> str | None:
         """Return the run's source-described stimulus type, if any."""
+        return None
+
+    def _get_icephys_stimulus_template_data(self) -> _IcephysStimulusTemplateData | None:
+        """Return the stimulus template the source specifies, if any.
+
+        The template is written from 0.0 at its rate and is not aligned with the response.
+        """
         return None

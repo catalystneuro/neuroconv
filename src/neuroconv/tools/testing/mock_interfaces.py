@@ -49,7 +49,7 @@ from ...tools.events import (
     _separate_events,
     _validate_detection_configuration,
 )
-from ...tools.icephys import _IcephysSeriesData
+from ...tools.icephys import _IcephysSeriesData, _IcephysStimulusTemplateData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_code_changes,
@@ -1917,6 +1917,8 @@ class MockIcephysInterface(BaseIcephysInterface):
         condition: str | None = None,
         metadata_key: str | None = None,
         stimulus_duration: float | None = None,
+        stimulus_template_duration: float | None = None,
+        stimulus_template_metadata_key: str | None = None,
         seed: int = 0,
         verbose: bool = False,
     ):
@@ -1958,6 +1960,13 @@ class MockIcephysInterface(BaseIcephysInterface):
             Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
             its command ends.
+        stimulus_template_duration : float, optional
+            Duration of the stimulus template, in seconds. None writes no template. Every sweep plays the same
+            waveform, so the template holds it once. Its samples are all 2.0, so it can be told apart from the
+            stimulus's 1.0.
+        stimulus_template_metadata_key : str, optional
+            Identity of the stimulus template in the metadata dict. Defaults to ``metadata_key``. Instances on one
+            electrode that give the same key share one template series.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
@@ -1976,6 +1985,8 @@ class MockIcephysInterface(BaseIcephysInterface):
         self._condition = condition
         self.metadata_key = metadata_key or "mock"
         self.stimulus_duration = stimulus_duration
+        self.stimulus_template_duration = stimulus_template_duration
+        self._stimulus_template_metadata_key = stimulus_template_metadata_key or self.metadata_key
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
@@ -2054,6 +2065,18 @@ class MockIcephysInterface(BaseIcephysInterface):
                     "description": f"Mock intracellular stimulus ({self._mode}).",
                 }
             }
+        # The template is keyed by waveform and electrode, so instances that name the same key share one series.
+        if self.stimulus_template_duration is not None:
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
+            metadata["Icephys"]["PatchClampStimulusTemplateSeries"] = {
+                self._stimulus_template_metadata_key: {
+                    "name": f"{stimulus_type_name}Template{to_camel_case(self._stimulus_template_metadata_key)}",
+                    "description": f"Mock intracellular stimulus template ({self._mode}).",
+                }
+            }
         return metadata
 
     def _get_icephys_series_data(self):
@@ -2084,6 +2107,18 @@ class MockIcephysInterface(BaseIcephysInterface):
                     for sweep_index in range(self.num_sweeps)
                 ]
         return response_data, stimulus_data, sweep_sample_ranges
+
+    def _get_icephys_stimulus_template_data(self):
+        """Return the synthetic stimulus template, one waveform of all 2.0 that every sweep plays."""
+        if self.stimulus_template_duration is None:
+            return None
+        template_samples = round(self.stimulus_template_duration * self.sampling_frequency)
+        return _IcephysStimulusTemplateData(
+            waveforms=[np.full(template_samples, 2.0, dtype="float32")],
+            sweep_waveform_indices=[0] * self.num_sweeps,
+            rate=self.sampling_frequency,
+            conversion=1.0,
+        )
 
     def _get_stimulus_type(self) -> str | None:
         return self.stimulus_type

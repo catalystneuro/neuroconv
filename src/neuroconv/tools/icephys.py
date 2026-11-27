@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile, TimeSeries
+from pynwb.base import TimeSeriesReference, TimeSeriesReferenceVectorData
 from pynwb.epoch import TimeIntervals
 from pynwb.icephys import (
     CurrentClampSeries,
@@ -41,8 +43,48 @@ class _IcephysSeriesData:
     conversion: float
     offset: float = 0.0
     # A stimulus's own `(start_index, count)` per sweep, for a source whose stimulus and response sweeps differ in
-    # length. None addresses the stimulus by the response's ranges.
+    # length, or a stimulus template's, pointing each sweep at its waveform. None addresses it by the response's
+    # ranges.
     sweep_sample_ranges: list[tuple[int, int]] | None = None
+
+
+@dataclass
+class _IcephysStimulusTemplateData:
+    """A stimulus template: each distinct sweep waveform once, and the index of the waveform each sweep played."""
+
+    waveforms: list[np.ndarray]
+    sweep_waveform_indices: list[int]
+    rate: float
+    conversion: float
+    offset: float = 0.0
+
+    def __post_init__(self):
+        if len({waveform.tobytes() for waveform in self.waveforms}) != len(self.waveforms):
+            raise ValueError("A stimulus template must hold each distinct waveform once.")
+
+    def to_series_data(self) -> _IcephysSeriesData:
+        """Lay the waveforms end to end from 0.0 and point each sweep at its waveform."""
+        waveform_counts = [len(waveform) for waveform in self.waveforms]
+        waveform_start_indices = np.cumsum([0, *waveform_counts[:-1]])
+        data = np.concatenate(self.waveforms)
+        return _IcephysSeriesData(
+            data=data,
+            timestamps=np.arange(len(data)) / self.rate,
+            conversion=self.conversion,
+            offset=self.offset,
+            sweep_sample_ranges=[
+                (int(waveform_start_indices[waveform_index]), waveform_counts[waveform_index])
+                for waveform_index in self.sweep_waveform_indices
+            ],
+        )
+
+
+# Each role a patch-clamp series plays: the metadata registry its entry lives in and the NWBFile method that adds it.
+_SERIES_ROLES = {
+    "response": ("PatchClampSeries", NWBFile.add_acquisition),
+    "stimulus": ("PatchClampStimulusSeries", NWBFile.add_stimulus),
+    "stimulus_template": ("PatchClampStimulusTemplateSeries", NWBFile.add_stimulus_template),
+}
 
 
 def _add_patch_clamp_series_to_nwbfile(
@@ -52,10 +94,10 @@ def _add_patch_clamp_series_to_nwbfile(
     series_data: _IcephysSeriesData,
     electrode,
     mode: str,
-    is_stimulus: bool,
+    role: Literal["response", "stimulus", "stimulus_template"],
 ):
-    """Construct and add one response or stimulus series from an icephys data record."""
-    metadata_registry = "PatchClampStimulusSeries" if is_stimulus else "PatchClampSeries"
+    """Construct and add one response, stimulus or stimulus template series from an icephys data record."""
+    metadata_registry, add_series = _SERIES_ROLES[role]
     _validate_metadata_key(
         metadata,
         metadata_path=("Icephys", metadata_registry),
@@ -65,10 +107,11 @@ def _add_patch_clamp_series_to_nwbfile(
         **_get_icephys_metadata_placeholders()["Icephys"][metadata_registry][DEFAULT_METADATA_KEY],
         **metadata["Icephys"][metadata_registry][series_metadata_key],
     }
-    # The electrode link is resolved by the caller; a stimulus reuses its response's electrode and has no link.
-    if not is_stimulus:
+    # The electrode link is resolved by the caller; a stimulus or template reuses its response's electrode and has
+    # no link.
+    if role == "response":
         series_metadata.pop("electrode_metadata_key")
-    series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
+    series_class = _RESPONSE_CLASS[mode] if role == "response" else _STIMULUS_CLASS[mode]
     # The entry sits over the defaults and under what the source provides, so it can set any argument of the
     # series class except the data, its scaling, the electrode and the timing, and pynwb rejects a key that is
     # not an argument at all.
@@ -86,12 +129,36 @@ def _add_patch_clamp_series_to_nwbfile(
     else:
         series_kwargs.update(timestamps=series_data.timestamps)
 
+    if role == "stimulus_template" and series_kwargs["name"] in nwbfile.stimulus_template:
+        existing_series = nwbfile.stimulus_template[series_kwargs["name"]]
+        _check_matching_stimulus_template(
+            existing_series=existing_series, series_class=series_class, series_data=series_data, electrode=electrode
+        )
+        return existing_series
+
     series = series_class(**series_kwargs)
-    if is_stimulus:
-        nwbfile.add_stimulus(series)
-    else:
-        nwbfile.add_acquisition(series)
+    add_series(nwbfile, series)
     return series
+
+
+def _check_matching_stimulus_template(
+    existing_series, series_class, series_data: _IcephysSeriesData, electrode
+) -> None:
+    """Raise unless a stimulus template already in the file holds the same waveform, on the same electrode."""
+    matches = (
+        existing_series.electrode is electrode
+        and type(existing_series) is series_class
+        and np.array_equal(existing_series.data[:], series_data.data)
+        and existing_series.conversion == series_data.conversion
+        and existing_series.offset == series_data.offset
+        and np.allclose(existing_series.get_timestamps(), series_data.timestamps)
+    )
+    if not matches:
+        raise ValueError(
+            f"The stimulus template '{existing_series.name}' is already in the NWB file with a different waveform or "
+            "electrode. Give each distinct waveform and electrode its own entry in "
+            "metadata['Icephys']['PatchClampStimulusTemplateSeries']."
+        )
 
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
@@ -140,6 +207,8 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
       ``electrode_metadata_key``.
     - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
       SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
+    - ``Icephys.PatchClampStimulusTemplateSeries[key]``: the optional stimulus template, the command the protocol
+      specified, keyed by waveform and electrode. Interfaces that name the same entry share one series.
     """
     metadata = DeepDict()
     metadata["Devices"] = {
@@ -163,6 +232,11 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
         "PatchClampStimulusSeries": {
             DEFAULT_METADATA_KEY: {
                 "name": "PatchClampStimulusSeries",
+            }
+        },
+        "PatchClampStimulusTemplateSeries": {
+            DEFAULT_METADATA_KEY: {
+                "name": "PatchClampStimulusTemplateSeries",
             }
         },
     }
@@ -232,6 +306,8 @@ def _add_intracellular_recordings_to_nwbfile(
     protocol_run: str,
     stimulus_series=None,
     stimulus_sweep_sample_ranges: list | None = None,
+    stimulus_template_series=None,
+    stimulus_template_sweep_sample_ranges: list | None = None,
     stimulus_type: str | None = None,
     repetition: str | None = None,
     condition: str | None = None,
@@ -277,6 +353,13 @@ def _add_intracellular_recordings_to_nwbfile(
     stimulus_sweep_sample_ranges : list of tuple of int, optional
         One ``(start_index, count)`` per sweep, into ``stimulus_series``, when its sweeps differ in length from
         the response's.
+    stimulus_template_series : PatchClampStimulusSeries, optional
+        The run's stimulus template, the command the protocol specified, addressed by
+        ``stimulus_template_sweep_sample_ranges`` or else by the response's ranges. A run without one gets an
+        empty reference in the ``stimulus_template`` column once another run has created it.
+    stimulus_template_sweep_sample_ranges : list of tuple of int, optional
+        One ``(start_index, count)`` per sweep, into ``stimulus_template_series``, when its sweeps differ in
+        length from the response's.
     stimulus_type : str, optional
         What kind of run this was. Omitted rather than given a placeholder when the source stated none.
     repetition : str, optional
@@ -302,11 +385,26 @@ def _add_intracellular_recordings_to_nwbfile(
                 data=[_UNSTATED_RUN_LEVEL_VALUE] * len(table),
             )
 
+    # The stimulus template column is optional in the schema. Rows written before it existed get an empty reference
+    # (index -1, count -1), the same value pynwb writes for a later row that has no template.
+    stimuli_table = table.category_tables["stimuli"]
+    if stimulus_template_series is not None and "stimulus_template" not in stimuli_table.colnames:
+        stimuli_table.add_column(
+            name="stimulus_template",
+            description="Column storing the reference to the stimulus template for the recording (rows)",
+            col_cls=TimeSeriesReferenceVectorData,
+            data=[TimeSeriesReference(-1, -1, stimulus_template_series)] * len(stimuli_table),
+        )
+
     if stimulus_sweep_sample_ranges is None:
         stimulus_sweep_sample_ranges = sweep_sample_ranges
-    for (response_start_index, response_count), (stimulus_start_index, stimulus_count) in zip(
-        sweep_sample_ranges, stimulus_sweep_sample_ranges, strict=True
-    ):
+    if stimulus_template_sweep_sample_ranges is None:
+        stimulus_template_sweep_sample_ranges = sweep_sample_ranges
+    for (
+        (response_start_index, response_count),
+        (stimulus_start_index, stimulus_count),
+        (stimulus_template_start_index, stimulus_template_count),
+    ) in zip(sweep_sample_ranges, stimulus_sweep_sample_ranges, stimulus_template_sweep_sample_ranges, strict=True):
         keyword_arguments = dict(
             electrode=electrode,
             response=response_series,
@@ -316,6 +414,12 @@ def _add_intracellular_recordings_to_nwbfile(
         if stimulus_series is not None:
             keyword_arguments.update(
                 stimulus=stimulus_series, stimulus_start_index=stimulus_start_index, stimulus_index_count=stimulus_count
+            )
+        if stimulus_template_series is not None:
+            keyword_arguments.update(
+                stimulus_template=stimulus_template_series,
+                stimulus_template_start_index=stimulus_template_start_index,
+                stimulus_template_index_count=stimulus_template_count,
             )
         keyword_arguments.update(columns)
         nwbfile.add_intracellular_recording(**keyword_arguments)
