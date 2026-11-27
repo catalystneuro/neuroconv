@@ -466,6 +466,64 @@ def _separate_events(resolved_configuration: dict, events_by_entry: dict) -> dic
     return events_by_identifier
 
 
+def _detect_on_line_changes(entry: dict, edges) -> tuple[np.ndarray, np.ndarray | None]:
+    """Read an ``on_change`` entry on a source whose hardware captured each change of a line, such as Open Ephys
+    hardware events.
+
+    Each change is an edge the hardware already timestamped, so nothing is detected in samples: the entry picks the edges of the
+    line in ``detection.lines``, which is line 0 when the entry names none. With only an ``onset`` the
+    occurrences are that line's edges of that direction, or all of them for ``"either"``. With an ``end``
+    each onset edge is paired with the next end edge on the same line into one occurrence. An onset
+    followed by another onset, or by nothing, stays open. An end edge with no open onset closes a period
+    whose onset was not recorded, and is dropped.
+
+    Parameters
+    ----------
+    entry : dict
+        The entry as ``BaseEventsInterface._resolve_event_sources`` returns it.
+    edges : _EventsData
+        The line changes in time order, whose payload holds the ``line`` of each edge, counted from 0, and
+        its ``onset``, ``"rising"`` or ``"falling"``.
+
+    Returns
+    -------
+    onset_indices : numpy.ndarray
+        The index of the edge that starts each occurrence.
+    end_indices : numpy.ndarray or None
+        ``None`` without an ``end``. Otherwise the index of the edge that closes each occurrence, or ``-1``
+        for an occurrence that stays open.
+    """
+    lines = edges.payload["line"]
+    onsets = edges.payload["onset"]
+    detection = entry["detection"]
+    line = detection.get("lines", [0])[0]
+    onset = detection["on_change"]["onset"]
+    end = detection["on_change"].get("end")
+    line_indices = np.flatnonzero(lines == line)
+
+    if end is None:
+        if onset == "either":
+            return line_indices, None
+        return line_indices[onsets[line_indices] == onset], None
+
+    onset_indices, end_indices = [], []
+    open_index = None
+    for index in line_indices:
+        if onsets[index] == onset:
+            if open_index is not None:
+                onset_indices.append(open_index)
+                end_indices.append(-1)
+            open_index = index
+        elif open_index is not None:
+            onset_indices.append(open_index)
+            end_indices.append(index)
+            open_index = None
+    if open_index is not None:
+        onset_indices.append(open_index)
+        end_indices.append(-1)
+    return np.array(onset_indices, dtype="int64"), np.array(end_indices, dtype="int64")
+
+
 def _add_events_to_nwbfile(nwbfile: NWBFile, *, events_data: dict, metadata: dict, metadata_key: str) -> None:
     """Write one interface's events as ``pynwb.event.EventsTable`` objects inside ``nwbfile.events``.
 
