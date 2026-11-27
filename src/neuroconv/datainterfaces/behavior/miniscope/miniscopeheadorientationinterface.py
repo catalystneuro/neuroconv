@@ -33,7 +33,7 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         *,
-        metadata_key: str = "TimeSeriesMiniscopeHeadOrientation",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -43,8 +43,9 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         ----------
         file_path : FilePath
             Path to headOrientation.csv file with columns: Time Stamp (ms), qw, qx, qy, qz
-        metadata_key : str, default: 'TimeSeriesMiniscopeHeadOrientation'
+        metadata_key : str, optional
             The key in metadata['TimeSeries'] to use for this interface.
+            Defaults to ``"TimeSeriesMiniscopeHeadOrientation"``.
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
@@ -52,7 +53,7 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         import pandas as pd
 
         super().__init__(file_path=file_path, verbose=verbose)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "TimeSeriesMiniscopeHeadOrientation"
 
         # Store the device folder path (parent of headOrientation.csv)
         # This folder contains metaData.json with device info
@@ -65,9 +66,9 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         self._quaternion_data = df[["qw", "qx", "qy", "qz"]].to_numpy(dtype="float64")
 
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
-            get_native_times=self.get_original_timestamps,
+            get_native_times=self._get_original_timestamps,
             get_number_of_samples=lambda: len(self._quaternion_data),
         )
 
@@ -91,6 +92,16 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         return MiniscopeImagingExtractor._get_session_start_time(miniscope_folder_path=folder_path)
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         """Return the original unaltered timestamps from the CSV file."""
         import pandas as pd
 

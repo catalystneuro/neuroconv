@@ -56,7 +56,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath,
         *,
         verbose: bool = False,
-        metadata_key: str = "spikeglx_nidq",
+        metadata_key: str | None = None,
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
         detection_configuration: dict | None = None,
@@ -74,11 +74,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "spikeglx_nidq"
+        metadata_key : str, optional
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
             to organize TimeSeries and Events metadata. It addresses the entries; the written objects'
-            names are their ``name`` fields.
+            names are their ``name`` fields. Defaults to ``"spikeglx_nidq"``.
         analog_channel_groups : dict[str, dict], optional
             Dictionary mapping group names to analog channel configurations.
             Each group specifies which channels to include and will be written as a separate
@@ -221,7 +221,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
             self.event_extractor = SpikeGLXEventExtractor(folder_path=self.folder_path)
 
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "spikeglx_nidq"
 
         # Resolve to defaults if None, then validate
         self._analog_channel_groups = (
@@ -275,13 +275,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         An analog group is keyed ``{metadata_key}_{group_key}_{segment_index}``, one key per written
         ``TimeSeries``. An event type keeps its ``event_type_source_id``, as in every events interface, and is
-        linked rather than registered again, so the events half and the board share one state and a shift of the
-        board moves both. Registering reads nothing.
+        linked rather than added again, so the events half and the board share one state and a shift of the
+        board moves both. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for group_key in self._analog_channel_groups:
             for segment_index in range(self.recording_extractor.get_num_segments()):
-                self._alignment._register(
+                self._alignment._add_time_bearing_object(
                     key=f"{self.metadata_key}_{group_key}_{segment_index}",
                     get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
                     default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),

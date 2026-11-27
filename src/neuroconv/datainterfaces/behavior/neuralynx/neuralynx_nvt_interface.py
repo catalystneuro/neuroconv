@@ -44,13 +44,23 @@ class NeuralynxNvtInterface(BaseDataInterface):
 
         # The position and the angle share one timeline, so the interface has one time-bearing object
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key="neuralynx_nvt",
-            get_native_times=self.get_original_timestamps,
-            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+            get_native_times=self._get_original_timestamps,
+            get_number_of_samples=lambda: len(self._get_original_timestamps()),
         )
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         data = read_data(self.file_path)
 
         times = data["TimeStamp"] / 1000000  # Neuralynx stores times in microseconds

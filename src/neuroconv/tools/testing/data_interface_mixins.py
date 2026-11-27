@@ -21,13 +21,13 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
+from neuroconv.tools.events import _to_table_object_name
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
 from neuroconv.tools.testing._nwbfile_times import (
     _get_nwbfile_durations,
@@ -182,7 +182,7 @@ class DataInterfaceTestMixin:
 
         self.run_custom_checks()
 
-    # Stated by each test class as a literal tuple of the keys its interface registers, in registration order.
+    # Stated by each test class as a literal tuple of the keys its interface adds, in the order it adds them.
     # Keys are public API users type into ``alignment[key]``, so the expected value is never derived from the
     # interface under test, which could not fail.
     expected_temporal_alignment_keys: tuple[str, ...] | None = None
@@ -195,7 +195,7 @@ class DataInterfaceTestMixin:
 
         assert self.expected_temporal_alignment_keys is not None, (
             f"{type(self).__name__} must state `expected_temporal_alignment_keys`, the literal tuple of keys that "
-            f"{self.data_interface_cls.__name__} registers in `temporal_alignment`."
+            f"{self.data_interface_cls.__name__} adds to `temporal_alignment`."
         )
         assert self.interface.temporal_alignment.keys() == tuple(self.expected_temporal_alignment_keys)
 
@@ -1597,6 +1597,57 @@ class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin):
             assert series.data.shape[0] == len(timestamps)
 
 
+class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
+    """Shared tests for the interfaces that write ``ndx-ethogram`` bouts described by an ``EthogramBouts`` entry.
+
+    The interface's bouts entry is ``metadata["Behavior"]["EthogramBouts"][interface.metadata_key]``, and its
+    ``ethogram_metadata_key`` names the catalogue's entry in ``metadata["Behavior"]["Ethograms"]``.
+    ``check_read_nwb`` asserts that the written bouts and catalogue carry what those entries say. The links to a
+    pose estimation and a video need another interface's object in the file, so each writer tests them in its
+    own test file.
+    """
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """The bouts and their catalogue are written under the names and descriptions of their entries."""
+        metadata = _get_metadata_for_writing(self.interface)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        bouts = behavior_module[bouts_entry["name"]]
+        catalogue = behavior_module[catalogue_entry["name"]]
+        assert bouts.description == bouts_entry["description"]
+        assert bouts.labeling_method == bouts_entry["labeling_method"]
+        assert bouts.ethogram.name == catalogue_entry["name"]
+        assert catalogue.description == catalogue_entry["description"]
+        assert set(bouts["label"][:]) <= set(catalogue["behavior"][:])
+        nwbfile.read_io.close()
+
+    def test_metadata_propagation(self, setup_interface):
+        """The names, descriptions, annotator and labeling method of the two entries reach the written objects."""
+        metadata = _get_metadata_for_writing(self.interface)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
+        bouts_entry.update(
+            name="CustomBouts",
+            description="Custom bouts description.",
+            annotator="A. Scorer",
+            labeling_method="curated",
+        )
+        catalogue_entry.update(name="CustomEthogram", description="Custom catalogue description.")
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        bouts = nwbfile.processing["behavior"]["CustomBouts"]
+        assert bouts.description == "Custom bouts description."
+        assert bouts.annotator == "A. Scorer"
+        assert bouts.labeling_method == "curated"
+        assert bouts.ethogram.name == "CustomEthogram"
+        assert bouts.ethogram.description == "Custom catalogue description."
+
+
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Shared tests for single-series fiber photometry interfaces.
 
@@ -1694,6 +1745,8 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
     states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
     """
 
+    expected_event_sources: tuple[str, ...] | None = None
+
     #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
     event_names: dict[str, str] = {}
 
@@ -1738,6 +1791,17 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
 
         nwbfile.read_io.close()
+
+    def test_event_source_discovery(self):
+        assert self.expected_event_sources is not None, (
+            f"{type(self).__name__} must set `expected_event_sources` to the source names in discovery order. "
+            "Use () when the input declares no sources."
+        )
+        discover_sources = self.data_interface_cls.get_available_event_sources
+        discovery_parameters = inspect.signature(discover_sources).parameters
+        source_data = {key: value for key, value in self.interface_kwargs.items() if key in discovery_parameters}
+        sources = discover_sources(**source_data)
+        assert sources == list(self.expected_event_sources)
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.

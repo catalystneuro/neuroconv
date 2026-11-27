@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from platform import python_version
+from platform import machine, python_version
 from sys import platform
 
 import numpy as np
@@ -243,8 +243,8 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
-    platform == "darwin" or this_python_version > version.parse("3.9"),
-    reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
+    platform != "win32" and (this_python_version < version.parse("3.14") or machine() != "x86_64"),
+    reason="Outside Windows, sonpy has usable wheels only on x86_64 with Python 3.14",
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
@@ -838,6 +838,57 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
             for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
         )
         assert metadata["NWBFile"]["session_id"] == "f58d55bb-22f6-4682-b3a2-aa116fabb78e"
+
+
+class TestNeuralynxRecordingInterfaceStreamWithGaps(RecordingExtractorInterfaceTestMixin):
+    # 2 kHz with three gaps next to 32 kHz without, which neo cannot open as one folder
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = (
+        "neuralynx_recording_0",
+        "neuralynx_recording_1",
+        "neuralynx_recording_2",
+        "neuralynx_recording_3",
+    )
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+        ),
+        stream_name="stream1_2000Hz_10mVRange_DSPFilter0",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestNeuralynxRecordingInterfaceStreamWithoutGaps(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+        ),
+        stream_name="stream0_32000Hz_1mVRange_DSPFilter1",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestNeuralynxRecordingInterfaceStreamsWithDifferentGaps(RecordingExtractorInterfaceTestMixin):
+    # two 32 kHz streams with different filters that lost data at different times
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0", "neuralynx_recording_1", "neuralynx_recording_2")
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH
+            / "neuralynx"
+            / "files_with_errors"
+            / "cheetah"
+            / "version_5_5_1"
+            / "file_not_closed_properly"
+        ),
+        stream_name="stream0_32000Hz_2mVRange_DSPFilter0",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
 
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -1672,8 +1723,8 @@ class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
             dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx")),
             "spike2_recording",
             marks=pytest.mark.skipif(
-                platform == "darwin" or this_python_version > version.parse("3.9"),
-                reason="Interface unsupported for OSX. Interface only runs on Python 3.9",
+                platform != "win32" and (this_python_version < version.parse("3.14") or machine() != "x86_64"),
+                reason="Outside Windows, sonpy has usable wheels only on x86_64 with Python 3.14",
             ),
         ),
     ],

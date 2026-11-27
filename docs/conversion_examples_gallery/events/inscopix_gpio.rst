@@ -49,8 +49,9 @@ Digital and coded channels as events
 Derive discrete events from the digital and coded channels with
 :py:class:`~neuroconv.datainterfaces.events.inscopix_gpio_events.inscopixgpioeventsdatainterface.InscopixGpioEventsInterface`,
 which writes each derived event type as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. Selection
-is explicit: name each channel in ``detection_configuration`` and give it a list of detection specs, one
-per event type you want from it. See :ref:`extract_events_from_signals` for that argument, and
+is explicit: give ``event_extraction_configuration`` one entry per event type you want, naming the channel
+it reads in ``source``. The digital inputs and outputs (``Digital GPI 0`` to ``7`` and ``Digital GPO 0``
+to ``7``) are not supported as event sources yet. See :ref:`extract_events_from_signals` for that argument, and
 :ref:`annotate_events_metadata` for naming the resulting event types and grouping them into tables.
 
 **Start from the inventory**, since the file itself says nothing about what a channel is:
@@ -60,7 +61,7 @@ or flat for the whole session, and it is where the cut points below come from.
 
 A channel that is already two-valued takes ``{"binarize": "midpoint"}``, so a ``0``/``1`` line and a
 line at 48 and 64 both read correctly without you knowing either. A graded channel is cut once per
-boundary worth telling apart, each spec with its own ``event_name``, as below: each cut becomes a
+boundary worth telling apart, each cut in an entry of its own, as below: each cut becomes a
 durative event type with real start and stop times, and the level the channel occupies at any instant
 is how many of them are open, so nothing is lost.
 
@@ -68,17 +69,27 @@ is how many of them are open, so nothing is lost.
 
     >>> from neuroconv.datainterfaces import InscopixGpioEventsInterface
     >>>
-    >>> detection_configuration = {
+    >>> event_extraction_configuration = {
     ...     # A 0/1 frame clock: the derived cut lands between its two levels.
-    ...     "BNC Sync Output": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
+    ...     "frames": {
+    ...         "source": "BNC Sync Output",
+    ...         "signal_conditioning": {"binarize": "midpoint"},
+    ...         "detection": {"on_change": {"onset": "rising"}},
+    ...     },
     ...     # An odor-concentration stimulus, cut at two boundaries worth telling apart.
-    ...     "GPIO-2": [
-    ...         {"signal_conditioning": {"binarize": 136}, "detection": "high_period", "event_name": "odor_low"},
-    ...         {"signal_conditioning": {"binarize": 192}, "detection": "high_period", "event_name": "odor_high"},
-    ...     ],
+    ...     "odor_low": {
+    ...         "source": "GPIO-2",
+    ...         "signal_conditioning": {"binarize": 136},
+    ...         "detection": {"on_change": {"onset": "rising", "end": "falling"}},
+    ...     },
+    ...     "odor_high": {
+    ...         "source": "GPIO-2",
+    ...         "signal_conditioning": {"binarize": 192},
+    ...         "detection": {"on_change": {"onset": "rising", "end": "falling"}},
+    ...     },
     ... }
     >>> interface = InscopixGpioEventsInterface(
-    ...     file_path=file_path, detection_configuration=detection_configuration, verbose=False
+    ...     file_path=file_path, event_extraction_configuration=event_extraction_configuration, verbose=False
     ... )
     >>>
     >>> metadata = interface.get_metadata()

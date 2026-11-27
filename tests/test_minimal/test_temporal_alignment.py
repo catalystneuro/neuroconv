@@ -15,15 +15,15 @@ def alignment():
         "b": np.array([2.0, 2.1, 2.2]),
     }
     alignment = _TemporalAlignment()
-    alignment._register(key="a", get_native_times=lambda: native_times["a"])
-    alignment._register(key="b", get_native_times=lambda: native_times["b"])
+    alignment._add_time_bearing_object(key="a", get_native_times=lambda: native_times["a"])
+    alignment._add_time_bearing_object(key="b", get_native_times=lambda: native_times["b"])
     return alignment
 
 
 class TestObjectAlignment:
     def test_move_earliest_observation_to_places_the_earliest_remapped_time(self):
         alignment = _TemporalAlignment()
-        alignment._register(key="a", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
+        alignment._add_time_bearing_object(key="a", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
         alignment["a"].remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[20.0, 40.0])
 
         alignment["a"].move_earliest_observation_to(10.0)
@@ -54,8 +54,8 @@ class TestObjectAlignment:
         """Check that placement overrides an earlier shift and repeating it changes nothing. Later shifts still apply."""
         native_times = np.array([5.0, 2.0, 8.0])
         alignment = _TemporalAlignment()
-        alignment._register(key="a", get_native_times=lambda: native_times)
-        alignment._register(key="b", get_native_times=lambda: np.array([2.0, 2.1, 2.2]))
+        alignment._add_time_bearing_object(key="a", get_native_times=lambda: native_times)
+        alignment._add_time_bearing_object(key="b", get_native_times=lambda: np.array([2.0, 2.1, 2.2]))
 
         alignment["a"].shift_times(3.0)
         alignment["a"].move_earliest_observation_to(100.0)
@@ -76,7 +76,9 @@ class TestObjectAlignment:
     def test_move_earliest_observation_to_and_set_times_respect_operation_order(self):
         """Check that replacement overrides placement and a later placement preserves replacement spacing."""
         alignment = _TemporalAlignment()
-        alignment._register(key="a", get_native_times=lambda: np.array([0.0, 1.0, 2.0]), default_start_time=0.0)
+        alignment._add_time_bearing_object(
+            key="a", get_native_times=lambda: np.array([0.0, 1.0, 2.0]), default_start_time=0.0
+        )
 
         alignment["a"].move_earliest_observation_to(100.0)
         alignment["a"].set_times([5.0, 2.0, 8.0])
@@ -129,7 +131,7 @@ class TestObjectAlignment:
         native_times = np.array([0.0, 0.1, 0.2])
         original_times = native_times.copy()
         alignment = _TemporalAlignment()
-        alignment._register(key="a", get_native_times=lambda: native_times)
+        alignment._add_time_bearing_object(key="a", get_native_times=lambda: native_times)
 
         alignment.shift_times(1.0)
         alignment["a"].get_times()
@@ -149,7 +151,7 @@ class TestObjectAlignment:
 
 
 class TestInterfaceAlignment:
-    def test_registered_objects_are_accessible_by_key(self, alignment):
+    def test_added_objects_are_accessible_by_key(self, alignment):
         """Check key order, initial timestamps, and the error for an unknown key."""
         assert alignment.keys() == ("a", "b")
         assert_allclose(alignment["a"].get_times(), [0.0, 0.1, 0.2, 0.3, 0.4])
@@ -160,7 +162,7 @@ class TestInterfaceAlignment:
             alignment["missing"]
 
     def test_interface_shift_times_accumulates_for_every_object(self, alignment):
-        """Check that a shift reaches both registered objects and successive shifts add together."""
+        """Check that a shift reaches both added objects and successive shifts add together."""
         alignment.shift_times(1.0)
 
         assert_allclose(alignment["a"].get_times(), [1.0, 1.1, 1.2, 1.3, 1.4])
@@ -174,8 +176,8 @@ class TestInterfaceAlignment:
     def test_interface_move_earliest_observation_to_preserves_current_relative_placement(self):
         """Check that placement preserves current relative times and is unchanged when repeated."""
         alignment = _TemporalAlignment()
-        alignment._register(key="a", get_native_times=lambda: np.array([4.0, 1.0, 6.0]))
-        alignment._register(key="b", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
+        alignment._add_time_bearing_object(key="a", get_native_times=lambda: np.array([4.0, 1.0, 6.0]))
+        alignment._add_time_bearing_object(key="b", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
 
         alignment["a"].shift_times(3.0)
         alignment.move_earliest_observation_to(100.0)
@@ -209,23 +211,23 @@ class TestInterfaceAlignment:
 
 class TestAlignmentEdgeCases:
     def test_empty_alignment_rejects_operations(self):
-        """Check that shifting, placement, and remapping are rejected when no objects are registered."""
+        """Check that shifting, placement, and remapping are rejected when no objects are added."""
         alignment = _TemporalAlignment()
         with pytest.raises(
             NotImplementedError,
-            match="This interface has registered no time-bearing objects, so there is nothing to shift",
+            match="This interface has added no time-bearing objects, so there is nothing to shift",
         ):
             alignment.shift_times(1.0)
 
         with pytest.raises(
             NotImplementedError,
-            match="This interface has registered no time-bearing objects, so it has no start to move",
+            match="This interface has added no time-bearing objects, so it has no start to move",
         ):
             alignment.move_earliest_observation_to(0.0)
 
         with pytest.raises(
             NotImplementedError,
-            match="This interface has registered no time-bearing objects, so there is nothing to remap",
+            match="This interface has added no time-bearing objects, so there is nothing to remap",
         ):
             alignment.remap_times(local_sync_times=[0, 1], reference_sync_times=[0, 1])
 
@@ -264,7 +266,7 @@ class TestEventsAlignment:
     @pytest.fixture
     def events_alignment(self):
         alignment = _TemporalAlignment()
-        alignment._register(
+        alignment._add_time_bearing_object(
             key="e",
             get_native_times=lambda: np.array([1.0, 4.0, 5.0]),
             get_number_of_samples=lambda: 3,
@@ -308,9 +310,9 @@ class TestEventsAlignment:
         assert_allclose(events_alignment["e"].get_durations(), [4.0, 1.0, np.nan])
 
     def test_a_type_without_durations_has_none(self):
-        """Check that an event type registered without durations reports none before and after remapping."""
+        """Check that an event type added without durations reports none before and after remapping."""
         alignment = _TemporalAlignment()
-        alignment._register(key="e", get_native_times=lambda: np.array([1.0, 2.0]))
+        alignment._add_time_bearing_object(key="e", get_native_times=lambda: np.array([1.0, 2.0]))
 
         assert alignment["e"].get_durations() is None
 

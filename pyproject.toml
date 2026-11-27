@@ -88,6 +88,9 @@ text = [
 ]
 
 ## Behavior
+behavior_minimal = [  # Keeps the minimal version of the ethogram dependency in the repo
+    "ndx-ethogram>=0.2.0",
+]
 audio = [
     "ndx-sound>=0.3.0",  # 0.3.0 allows any number of channels, 0.2.3 fixed the starting_time dtype for hdmf>=6
     "scipy", # for scipy.io.wavfile
@@ -130,21 +133,25 @@ optitrack = [
     "ndx-pose>=0.4.0",  # for MultiCameraPoseEstimation
 ]
 moseq = [
-    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
+    "neuroconv[behavior_minimal]",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
 ]
 vame = [
     "ndx-vame>=0.3.2",
-    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
+    "neuroconv[behavior_minimal]",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
+]
+bsoid = [
+    "neuroconv[behavior_minimal]",  # the behavior groups are written as an Ethogram and its EthogramBouts
 ]
 boris = [
-    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+    "neuroconv[behavior_minimal]",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
-    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+    "neuroconv[behavior_minimal]",  # manual-scoring rows also produce an Ethogram and EthogramBouts
 ]
 behavior = [
     "neuroconv[boris]",
+    "neuroconv[bsoid]",
     "neuroconv[ethovision]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
@@ -278,7 +285,7 @@ plexon2 = [
 ]
 spike2 = [
     "neuroconv[ecephys_minimal]",
-    "sonpy; platform_system=='Windows' or python_version>='3.14'",
+    "sonpy; platform_system=='Windows' or (python_version>='3.14' and platform_machine=='x86_64')",
 ]
 spikegadgets = [
     "neuroconv[ecephys_minimal]",
@@ -396,7 +403,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.10.0",
+    "roiextractors>=0.11.0",
 ]
 # What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
 # what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.

@@ -104,6 +104,16 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         self.verbose = verbose
 
     def get_original_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps(start_sample=start_sample, end_sample=end_sample)
+
+    def _get_original_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
         return self.segmentation_extractor.get_native_timestamps(start_sample=start_sample, end_sample=end_sample)
 
     def get_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:

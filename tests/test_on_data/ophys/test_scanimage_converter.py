@@ -91,7 +91,13 @@ class TestScanImageConverterSingleChannel:
 class TestScanImageConverterMultiFile:
     """A multi-file acquisition is followed from its first file, for every channel."""
 
-    file_path = SCANIMAGE_FOLDER_PATH / "volumetric_two_channels_multi_file" / "vol_two_ch_multi_files_00001_00001.tif"
+    file_path = (
+        SCANIMAGE_FOLDER_PATH
+        / "tiff_format_version_4"
+        / "binary_data_layout"
+        / "volumetric_flyback_frames_two_channels_split_over_files_version_2021_0"
+        / "volume_00001_00001.tif"
+    )
 
     def test_files_are_followed_for_every_channel(self):
         converter = ScanImageConverter(file_path=self.file_path)
@@ -104,9 +110,9 @@ class TestScanImageConverterMultiFile:
             name: interface.imaging_extractor.get_num_samples()
             for name, interface in converter.data_interface_objects.items()
         }
-        # The ten files of the series reach both channels, not just the one the first file starts.
+        # The three files of the series, one volume each, reach both channels, not just the first file.
         assert len(set(num_samples_per_channel.values())) == 1
-        assert next(iter(num_samples_per_channel.values())) > 1
+        assert next(iter(num_samples_per_channel.values())) == 3
 
 
 class TestScanImageConverterSourceValidation:

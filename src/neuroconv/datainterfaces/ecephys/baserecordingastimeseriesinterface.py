@@ -36,11 +36,11 @@ class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}``.
 
         The key is the one a ``{metadata_key}_{segment_index}`` metadata entry uses to override the series of that
-        segment, so one name addresses a segment for both. Registering reads nothing.
+        segment, so one name addresses a segment for both. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self.recording_extractor.get_num_segments()):
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
                 get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
                 default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),

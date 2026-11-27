@@ -120,13 +120,13 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         return metadata_schema
 
     def _get_native_times(self) -> np.ndarray:
-        return self.get_original_timestamps()
+        return self._get_original_timestamps()
 
     def _get_native_start_time(self) -> float:
         times = self._get_native_times()
         return float(times[0]) if times.size else np.nan
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         from ndx_miniscope.utils import get_timestamps
 
         timestamps = get_timestamps(folder_path=self.source_data["folder_path"])

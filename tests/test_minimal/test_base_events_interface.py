@@ -16,6 +16,7 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
+    expected_event_sources = ("events", "silent", "digital_port", "analog", "line_changes")
     interface_kwargs = dict()
 
     def test_get_metadata(self):
@@ -38,7 +39,7 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events"}
 
-    def test_event_types_are_registered_at_construction(self, monkeypatch):
+    def test_event_types_are_added_at_construction(self, monkeypatch):
         interface = MockEventsInterface(num_event_types=2)
         expected_keys = interface.get_event_type_source_ids()
 
@@ -141,10 +142,11 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         events = nwbfile.get_events_table("Events")
-        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude"}
+        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude", "side"}
         assert list(events["outcome"][:]) == ["go", "no_go", "go"]
         assert list(events["cue"][:]) == ["tone", "tone", "light"]
         assert list(events["amplitude"][:]) == [0.0, 1.0, 2.0]
+        assert list(events["side"][:]) == ["left", "left", "right"]
         # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
         # without one, and 'amplitude' writes raw values.
         assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
@@ -556,7 +558,445 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
 
-class TestSharedColumnAcrossEventTypes:
+class TestEventSourceResolution:
+    def test_missing_event_source(self):
+        missing_source = "missing_test_source"
+        event_extraction_configuration = {"requested": {"source": missing_source}}
+        expected_error = (
+            f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
+            "Available sources: ['events_0', 'events_1', 'silent', 'digital_port', 'analog', 'line_changes']. "
+            "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(num_event_types=2, event_extraction_configuration=event_extraction_configuration)
+
+    def test_two_event_types_can_read_the_same_source(self):
+        num_event_types = 2
+        source_name = "events_1"
+        default_interface = MockEventsInterface(num_event_types=num_event_types)
+        expected_timestamps = default_interface.get_event_times(source_name)
+        event_extraction_configuration = {
+            "first_read": {"source": source_name},
+            "second_read": {"source": source_name},
+        }
+        interface = MockEventsInterface(
+            num_event_types=num_event_types,
+            event_extraction_configuration=event_extraction_configuration,
+        )
+        assert len(expected_timestamps) > 0
+        assert interface.get_event_type_source_ids() == ["first_read", "second_read"]
+        np.testing.assert_array_equal(interface.get_event_times("first_read"), expected_timestamps)
+        np.testing.assert_array_equal(interface.get_event_times("second_read"), expected_timestamps)
+
+    def test_requested_silent_source_writes_empty_table_with_native_payload_dtype(self):
+        requested_event_type = "silent_read"
+        event_extraction_configuration = {requested_event_type: {"source": "silent"}}
+        interface = MockEventsInterface(
+            event_payload="multi value",
+            event_extraction_configuration=event_extraction_configuration,
+        )
+        assert interface.get_event_type_source_ids() == [requested_event_type]
+        assert len(interface.get_event_times(requested_event_type)) == 0
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("SilentRead")
+        assert len(table) == 0
+        assert table["amplitude"].data.dtype == np.dtype("float32")
+
+    def test_omitted_source_with_multiple_discovered_sources(self):
+        configuration = {"requested": {}}
+        expected_error = (
+            "Event extraction entry 'requested' must specify 'source' because this recording has "
+            "multiple event sources. Available sources: ['events', 'silent', 'digital_port', 'analog', 'line_changes']."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+    def test_omitted_source_uses_the_only_discovered_source(self):
+        class CameraRecording(MockEventsInterface):
+            @classmethod
+            def _get_event_source_info(cls, num_event_types):
+                return {"camera": {"supported_operations": []}}
+
+        configuration = {"requested": {}}
+        schema = CameraRecording.get_source_schema()
+        assert Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
+        expected_timestamps = CameraRecording().get_event_times("camera")
+        interface = CameraRecording(event_extraction_configuration=configuration)
+        np.testing.assert_array_equal(interface.get_event_times("requested"), expected_timestamps)
+        assert configuration == {"requested": {}}
+
+    def test_initialization_fails_when_input_has_no_event_sources(self):
+        class MockInterfaceWithoutEventSources(MockEventsInterface):
+            @classmethod
+            def _get_event_source_info(cls, num_event_types):
+                return {}
+
+        expected_error = "No event sources were found in the input data."
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockInterfaceWithoutEventSources()
+
+    def test_extraction_configuration_rejects_unsupported_operation(self):
+        configuration = {"requested": {"source": "events", "detection": {"on_change": {"onset": "rising"}}}}
+        expected_error = (
+            "Event extraction entry 'requested' requests unsupported operations ['detection'] for source 'events'. "
+            "Supported operations: ['separation']."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+
+class TestEventDetection:
+    """``detection`` on the sampled sources of ``MockEventsInterface``.
+
+    ``digital_port`` holds three lines sampled every 0.1 s. Line 0 rises at 0.1, 0.5 and 0.9 s and falls at
+    0.3, 0.7 and 1.1 s. Line 1 rises at 0.3 s and falls at 0.8 s. Line 2, a strobe, rises at 0.2, 0.4, 0.7
+    and 1.0 s and falls one sample later. ``analog`` is a magnitude that crosses
+    2.5 upward at 0.2 and 0.6 s and downward at 0.4 and 0.8 s.
+    """
+
+    def test_lines_selects_one_bit_of_a_digital_port(self):
+        configuration = {
+            "camera": {"source": "digital_port", "detection": {"lines": [1], "on_change": {"onset": "rising"}}}
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        assert table.colnames == ("timestamp",)
+        np.testing.assert_allclose(table["timestamp"][:], [0.3])
+
+    def test_onset_and_end_give_an_event_with_duration(self):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {"lines": [0], "on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.5, 0.9])
+        np.testing.assert_allclose(table["duration"][:], [0.2, 0.2, 0.2])
+
+    def test_analog_signal_is_cut_into_a_line(self):
+        configuration = {
+            "photodiode": {
+                "source": "analog",
+                "signal_conditioning": {"binarize": 2.5},
+                "detection": {"on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Photodiode")
+        np.testing.assert_allclose(table["timestamp"][:], [0.2, 0.6])
+        np.testing.assert_allclose(table["duration"][:], [0.2, 0.2])
+
+    @pytest.mark.parametrize(
+        "timestamp_estimate, expected_timestamps",
+        [
+            ("first_sample_after_change", [0.1, 0.5, 0.9]),
+            ("last_sample_before_change", [0.0, 0.4, 0.8]),
+            ("halfway_between_samples", [0.05, 0.45, 0.85]),
+        ],
+    )
+    def test_timestamp_estimate_picks_the_time_of_each_change(self, timestamp_estimate, expected_timestamps):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {
+                    "lines": [0],
+                    "on_change": {"onset": "rising"},
+                    "timestamp_estimate": timestamp_estimate,
+                },
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+
+    def test_end_equal_to_the_onset_raises(self):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {"lines": [0], "on_change": {"onset": "rising", "end": "rising"}},
+            }
+        }
+        expected_error = (
+            "Event extraction entry 'camera' sets 'on_change' with onset 'rising' and end 'rising'. An event that "
+            "starts on a rising change ends on a falling one and the reverse, and an 'either' onset takes no end."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+    @pytest.mark.parametrize(
+        "lines, expected_event_codes",
+        [([0, 1], [1, 2, 3, 2, 0, 1, 0]), ([1, 0], [2, 1, 3, 1, 0, 2, 0])],
+    )
+    def test_code_change_gives_one_event_per_change_of_the_code(self, lines, expected_event_codes, tmp_path):
+        """Each change of the code is an event (*), carrying the code it changed to.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+
+        At 0.3 s both lines change on the same sample, which is one event. With lines [1, 0] line 1 is
+        bit 0, so the codes are 2, 1, 3, 1, 0, 2, 0.
+        """
+        configuration = {"codes": {"source": "digital_port", "detection": {"lines": lines, "on_code_change": {}}}}
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+        nwbfile_path = tmp_path / "codes.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path)
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            table = io.read().get_events_table("Codes")
+            assert table.colnames == ("timestamp", "event_code")
+            np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.1])
+            np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+            assert table["event_code"].data.dtype == np.dtype("uint8")
+
+    def test_code_change_separated_by_event_code(self):
+        """Selecting codes 1 and 3 keeps the events marked x, as two event types.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        events       *       *       *       *   *   *       *
+        select       x               x               x
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_code_change": {}},
+                "separation": {"by_payload_fields": ["event_code"], "select": [1, 3]},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_codes_1_timestamps = [0.1, 0.9]
+        expected_codes_3_timestamps = [0.5]
+        assert set(nwbfile.events) == {"Codes1", "Codes3"}
+
+        codes_1_table = nwbfile.get_events_table("Codes1")
+        np.testing.assert_allclose(codes_1_table["timestamp"][:], expected_codes_1_timestamps)
+        np.testing.assert_array_equal(codes_1_table["event_code"][:], [1, 1])
+
+        codes_3_table = nwbfile.get_events_table("Codes3")
+        np.testing.assert_allclose(codes_3_table["timestamp"][:], expected_codes_3_timestamps)
+        np.testing.assert_array_equal(codes_3_table["event_code"][:], [3])
+
+    def test_strobe_reads_the_code_at_each_strobe(self):
+        """Each rise of the strobe on line 2 is an event (*), carrying the code of lines 0 and 1 at that sample.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        line 2   0   0   1   0   1   0   0   1   0   0   1   0
+        events           *       *           *           *
+
+        The strobes at 0.4 and 0.7 s both find code 2, which is two events. The code 3 at 0.5 s is never read.
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_strobe": {"line": 2, "onset": "rising"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.2, 0.4, 0.7, 1.0]
+        expected_event_codes = [1, 2, 2, 1]
+        table = nwbfile.get_events_table("Codes")
+        assert table.colnames == ("timestamp", "event_code")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+
+    def test_strobe_reads_the_code_at_each_falling_strobe(self):
+        """Each fall of the strobe on line 2 is an event (*), carrying the code of lines 0 and 1 at that sample.
+
+        time    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
+        line 0   0   1   1   0   0   1   1   0   0   1   1   0
+        line 1   0   0   0   1   1   1   1   1   0   0   0   0
+        code     0   1   1   2   2   3   3   2   0   1   1   0
+        line 2   0   0   1   0   1   0   0   1   0   0   1   0
+        events               *       *           *           *
+        """
+        configuration = {
+            "codes": {
+                "source": "digital_port",
+                "detection": {"lines": [0, 1], "on_strobe": {"line": 2, "onset": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.3, 0.5, 0.8, 1.1]
+        expected_event_codes = [2, 3, 0, 0]
+        table = nwbfile.get_events_table("Codes")
+        assert table.colnames == ("timestamp", "event_code")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_array_equal(table["event_code"][:], expected_event_codes)
+
+    def test_end_pairs_line_changes_into_events_with_duration(self):
+        """Each rise of line 1 is paired with its next fall (|) into one event (*).
+
+        time    0.05 0.10 0.15 0.30 0.40 0.42 0.45 0.70
+        line      1    0    0    1    0    1    0    1
+        onset     F    R    F    R    R    F    F    R
+        events                   *---------|         *
+
+        The fall at 0.05 s closes a pulse whose rise was not recorded, so it is dropped. The rise at 0.70 s
+        is never closed, so its duration is missing.
+        """
+        configuration = {
+            "pulses": {
+                "source": "line_changes",
+                "detection": {"lines": [1], "on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.30, 0.70]
+        expected_durations = [0.12, np.nan]
+        table = nwbfile.get_events_table("Pulses")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+        np.testing.assert_allclose(table["duration"][:], expected_durations)
+
+    def test_onset_keeps_the_line_changes_of_one_direction(self):
+        """With only an onset, the rises of line 0 are the events (*).
+
+        time    0.05 0.10 0.15 0.30 0.40 0.42 0.45 0.70
+        line      1    0    0    1    0    1    0    1
+        onset     F    R    F    R    R    F    F    R
+        events         *              *
+        """
+        configuration = {
+            "rises": {"source": "line_changes", "detection": {"lines": [0], "on_change": {"onset": "rising"}}}
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        expected_timestamps = [0.10, 0.40]
+        table = nwbfile.get_events_table("Rises")
+        assert table.colnames == ("timestamp",)
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+
+
+class TestEventSeparation:
+    """``separation`` in ``event_extraction_configuration``, applied by ``neuroconv.tools.events._separate_events``."""
+
+    def test_one_field_gives_one_event_type_per_recorded_value(self):
+        num_events = 8
+        unseparated = MockEventsInterface(
+            num_events=num_events, event_payload="multi value", event_extent="event with duration"
+        )
+        recorded = unseparated._get_events_data_dict()["events"]
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["outcome"]}}}
+        interface = MockEventsInterface(
+            num_events=num_events,
+            event_payload="multi value",
+            event_extent="event with duration",
+            event_extraction_configuration=configuration,
+        )
+
+        expected_identifiers = ["choices_0", "choices_1"]
+        expected_rows = {"choices_0": [0, 2, 4, 6], "choices_1": [1, 3, 5, 7]}
+        assert interface.get_event_type_source_ids() == expected_identifiers
+        assert list(interface.temporal_alignment.keys()) == expected_identifiers
+        events_data_dict = interface._get_events_data_dict()
+        for identifier, rows in expected_rows.items():
+            events = events_data_dict[identifier]
+            np.testing.assert_array_equal(interface.get_event_times(identifier), recorded.timestamps[rows])
+            np.testing.assert_array_equal(events.durations, recorded.durations[rows])
+            for field, values in recorded.payload.items():
+                np.testing.assert_array_equal(events.payload[field], values[rows])
+
+    def test_text_field_gives_text_identifiers(self):
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["side"]}}}
+        interface = MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+        expected_times = {"choices_left": [0.1, 0.2], "choices_right": [0.3, 0.4]}
+        assert interface.get_event_type_source_ids() == list(expected_times)
+        for identifier, times in expected_times.items():
+            np.testing.assert_allclose(interface.get_event_times(identifier), times)
+
+    def test_two_fields_give_one_event_type_per_recorded_pair(self):
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["outcome", "side"]}}}
+        interface = MockEventsInterface(
+            num_events=8, event_payload="multi value", event_extraction_configuration=configuration
+        )
+
+        expected_times = {
+            "choices_0_left": [0.1, 0.5],
+            "choices_1_left": [0.2, 0.6],
+            "choices_0_right": [0.3, 0.7],
+            "choices_1_right": [0.4, 0.8],
+        }
+        assert interface.get_event_type_source_ids() == list(expected_times)
+        for identifier, times in expected_times.items():
+            np.testing.assert_allclose(interface.get_event_times(identifier), times)
+
+    def test_selected_value_without_occurrences_writes_typed_empty_table(self):
+        selected_outcomes = [1, 2]
+        configuration = {
+            "choices": {
+                "source": "events",
+                "separation": {"by_payload_fields": ["outcome"], "select": selected_outcomes},
+            }
+        }
+        interface = MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+        expected_identifiers = ["choices_1", "choices_2"]
+        assert interface.get_event_type_source_ids() == expected_identifiers
+        np.testing.assert_allclose(interface.get_event_times("choices_1"), [0.2, 0.4])
+
+        nwbfile = interface.create_nwbfile()
+        empty_table = nwbfile.get_events_table("Choices2")
+        assert len(empty_table) == 0
+        assert empty_table["amplitude"].data.dtype == np.dtype("float32")
+        assert empty_table["side"].data.dtype.kind == "U"
+
+    def test_selected_pair(self):
+        selected_pair = {"outcome": 1, "side": "right"}
+        configuration = {
+            "choices": {
+                "source": "events",
+                "separation": {"by_payload_fields": ["outcome", "side"], "select": [selected_pair]},
+            }
+        }
+        interface = MockEventsInterface(
+            num_events=8, event_payload="multi value", event_extraction_configuration=configuration
+        )
+
+        assert interface.get_event_type_source_ids() == ["choices_1_right"]
+        np.testing.assert_allclose(interface.get_event_times("choices_1_right"), [0.4, 0.8])
+
+    def test_entry_named_like_a_separated_type_raises(self):
+        configuration = {
+            "choices_1": {"source": "events"},
+            "choices": {"source": "events", "separation": {"by_payload_fields": ["outcome"]}},
+        }
+        expected_error = (
+            "Two event types get the identifier 'choices_1': entry 'choices_1' and entry 'choices' with "
+            "{'outcome': 1}."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+
+class TestColumnFilledBySeveralEventTypes:
     """A value column shared across event types pooled into one ``EventsTable`` (issue #1786).
 
     All single-interface: one ``MockEventsInterface`` whose event types route to one table via a shared
@@ -849,7 +1289,7 @@ class TestEventsAcrossInterfaces:
         }
 
     def test_shared_column_across_two_interfaces(self):
-        # The cross-interface counterpart of TestSharedColumnAcrossEventTypes.test_shared_column_across_merged_event_types:
+        # The cross-interface counterpart of TestColumnFilledBySeveralEventTypes.test_shared_column_across_merged_event_types:
         # both interfaces write the SAME column_name ("outcome") with identical categories. The second
         # interface appends to the first's column instead of getting its own, so it is one shared column
         # filled from both, not outcome_a / outcome_b with fill-value gaps.

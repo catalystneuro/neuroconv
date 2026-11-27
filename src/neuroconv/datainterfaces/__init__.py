@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
+from .behavior.bsoid.bsoidinterface import BSOiDInterface
 from .behavior.dannce.danncedatainterface import DANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.ethovision.ethovisionmanualscoringinterface import (
@@ -81,6 +82,7 @@ from .ecephys.plexon.plexondatainterface import (
     PlexonLFPInterface,
     PlexonSortingInterface,
 )
+from .ecephys.plexon.plexoneventsinterface import PlexonEventsInterface
 from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
@@ -268,6 +270,7 @@ interface_list = [
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
+    BSOiDInterface,
     OptiTrackInterface,
     # Text
     CsvTimeIntervalsInterface,
@@ -283,6 +286,7 @@ interface_list = [
     MedPCPackedEventsInterface,
     NPMEventsInterface,
     OpenEphysBinaryEventsInterface,
+    PlexonEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
     InscopixGpioEventsInterface,
@@ -346,6 +350,7 @@ interfaces_by_category = dict(
         BORIS=BORISInterface,
         EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        BSOiD=BSOiDInterface,
         OptiTrack=OptiTrackInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
@@ -365,6 +370,7 @@ interfaces_by_category = dict(
         MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
         OpenEphysBinaryEvents=OpenEphysBinaryEventsInterface,
+        PlexonEvents=PlexonEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
         InscopixGpioEvents=InscopixGpioEventsInterface,

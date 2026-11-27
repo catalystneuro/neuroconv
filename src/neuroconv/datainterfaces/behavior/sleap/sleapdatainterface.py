@@ -291,6 +291,12 @@ class SLEAPInterface(BasePoseEstimationInterface):
         return np.asarray([labeled_frame.frame_idx for labeled_frame, _ in self._get_track_samples()])
 
     def get_original_timestamps(self) -> np.ndarray:
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self._legacy_interface is not None:
             return self._legacy_interface.get_original_timestamps()
         return self._get_original_timestamps()

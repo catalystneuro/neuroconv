@@ -5,7 +5,7 @@ from pydantic import FilePath, validate_call
 from .intananaloginterface import IntanAnalogInterface
 from .intananalogueventsinterface import IntanAnalogEventsInterface
 from .intandatainterface import IntanRecordingInterface
-from .intandigitalinterface import IntanDigitalInterface
+from .intandigitalinterface import _DIGITAL_STREAM_NAMES, IntanDigitalInterface
 from .intanstiminterface import IntanStimInterface
 from ....nwbconverter import ConverterPipe
 from ....utils import get_json_schema_from_method_signature
@@ -71,10 +71,9 @@ class IntanConverter(ConverterPipe):
             "interface": IntanStimInterface,
             "metadata_key": "intan_stim",
         },
-        # Both digital words route to one interface: it addresses lines by the header's own name for
-        # them, whose DIGITAL-IN / DIGITAL-OUT prefixes already say which word a line came off, so it
-        # covers whichever words a file carries without being told. Two entries pointing at one
-        # interface_name is how a file holding both still builds a single instance.
+        # Both digital words route to one interface: it reads each word as a port, "digital_inputs" or
+        # "digital_outputs", so it covers whichever words a file carries without being told. Two entries
+        # pointing at one interface_name is how a file holding both still builds a single instance.
         "USB board digital input channel": {
             "interface_name": "Digital",
             "interface": IntanDigitalInterface,
@@ -127,7 +126,7 @@ class IntanConverter(ConverterPipe):
         file_path: FilePath,
         *,
         exclude_streams: list[str] | None = None,
-        detection_configuration: dict[str, list[dict]] | None = None,
+        event_extraction_configuration: dict[str, dict] | None = None,
         verbose: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -137,7 +136,7 @@ class IntanConverter(ConverterPipe):
         Streams present in the file header that do not have a routed sub-interface
         (supply voltage) are skipped automatically. Digital input/output words are
         routed to ``IntanDigitalInterface`` with its default config unless
-        ``detection_configuration`` explicitly selects event signals, storing every
+        ``event_extraction_configuration`` explicitly selects event sources, storing every
         enabled line as a high pulse (onset at the 0->1 rise, duration to the 1->0
         fall, assuming active-high lines; a line that never toggles becomes an empty table); pass
         their names to ``exclude_streams`` to skip them.
@@ -155,12 +154,13 @@ class IntanConverter(ConverterPipe):
             stream (for example the Stim channel) during a fast test conversion.
             ``IntanConverter.get_streams(file_path=...)`` lists what is available.
             Unknown names raise ``ValueError``.
-        detection_configuration : dict, optional
-            A flat ``{source_signal_name: [spec, ...]}`` mapping across digital lines and ADC channels.
-            When omitted, every digital line is derived as a lossless ``"high_period"`` event and ADC
-            streams remain raw-only. When supplied, it is an explicit event selection: only named signals
-            are derived. Digital line names (such as ``"DIGITAL-IN-01"``) and ADC channel names (such as
-            ``"ANALOG-IN-1"`` or ``"ANALOG-OUT-1"``) are read from the source header.
+        event_extraction_configuration : dict, optional
+            Entries keyed by the event type identifier, across the digital ports and the ADC channels.
+            Each entry names its ``source``: a port (``"digital_inputs"``, ``"digital_outputs"``), whose
+            entries go to ``IntanDigitalInterface``, or an ADC channel (``"ANALOG-IN-1"``,
+            ``"ANALOG-OUT-1"``), whose entries go to ``IntanAnalogEventsInterface``. When omitted, every
+            digital line is read as a high pulse and ADC streams remain raw-only. When supplied, only the
+            configured entries are derived.
         verbose : bool, default: False
             Whether to output verbose text.
         saved_files_are_split : bool, default: False
@@ -180,8 +180,6 @@ class IntanConverter(ConverterPipe):
                     f"Available streams: {present_streams}."
                 )
             present_streams = [name for name in present_streams if name not in exclude_streams]
-
-        digital_stream_names = {"USB board digital input channel", "USB board digital output channel"}
 
         data_interfaces = {}
         for stream_name in present_streams:
@@ -210,9 +208,9 @@ class IntanConverter(ConverterPipe):
                 interface.es_key = interface_kwargs["metadata_key"]
             data_interfaces[entry["interface_name"]] = interface
 
-        has_digital_streams = bool(digital_stream_names.intersection(present_streams))
-        if detection_configuration is None:
-            if has_digital_streams:
+        digital_ports = [port for stream_name, port in _DIGITAL_STREAM_NAMES.items() if stream_name in present_streams]
+        if event_extraction_configuration is None:
+            if digital_ports:
                 data_interfaces["Digital"] = IntanDigitalInterface(
                     file_path=file_path,
                     metadata_key="intan_digital",
@@ -220,51 +218,42 @@ class IntanConverter(ConverterPipe):
                     saved_files_are_split=saved_files_are_split,
                 )
         else:
-            digital_inventory = {}
-            if has_digital_streams:
-                digital_inventory_interface = IntanDigitalInterface(
-                    file_path=file_path,
-                    metadata_key="intan_digital",
-                    verbose=verbose,
-                    saved_files_are_split=saved_files_are_split,
-                )
-                digital_inventory = digital_inventory_interface._available_signals
-            analog_inventory = {
+            analog_channels = [
                 str(channel_id)
                 for interface_name in ("AnalogADCInput", "AnalogADCOutput")
                 if (interface := data_interfaces.get(interface_name)) is not None
                 for channel_id in interface.recording_extractor.get_channel_ids()
-            }
-            available_signal_names = set(digital_inventory) | analog_inventory
-            unknown_signal_names = set(detection_configuration) - available_signal_names
-            if unknown_signal_names:
-                raise ValueError(
-                    "detection_configuration names signal(s) not found in the discovered digital or ADC streams: "
-                    f"{sorted(unknown_signal_names)}. Available signals: {sorted(available_signal_names)}."
-                )
+            ]
+            available_sources = digital_ports + analog_channels
+            for entry_name, entry in event_extraction_configuration.items():
+                if entry.get("source") not in available_sources:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} must name a 'source' among the digital ports and "
+                        f"ADC channels of the file. Available sources: {available_sources}."
+                    )
 
-            digital_detection_configuration = {
-                signal_name: specs
-                for signal_name, specs in detection_configuration.items()
-                if signal_name in digital_inventory
+            digital_configuration = {
+                entry_name: entry
+                for entry_name, entry in event_extraction_configuration.items()
+                if entry["source"] in digital_ports
             }
-            analog_detection_configuration = {
-                signal_name: specs
-                for signal_name, specs in detection_configuration.items()
-                if signal_name in analog_inventory
+            analog_configuration = {
+                entry_name: entry
+                for entry_name, entry in event_extraction_configuration.items()
+                if entry["source"] in analog_channels
             }
-            if digital_detection_configuration:
+            if digital_configuration:
                 data_interfaces["Digital"] = IntanDigitalInterface(
                     file_path=file_path,
-                    detection_configuration=digital_detection_configuration,
+                    event_extraction_configuration=digital_configuration,
                     metadata_key="intan_digital",
                     verbose=verbose,
                     saved_files_are_split=saved_files_are_split,
                 )
-            if analog_detection_configuration:
+            if analog_configuration:
                 data_interfaces["AnalogEvents"] = IntanAnalogEventsInterface(
                     file_path=file_path,
-                    detection_configuration=analog_detection_configuration,
+                    event_extraction_configuration=analog_configuration,
                     metadata_key="intan_analog_events",
                     verbose=verbose,
                     saved_files_are_split=saved_files_are_split,

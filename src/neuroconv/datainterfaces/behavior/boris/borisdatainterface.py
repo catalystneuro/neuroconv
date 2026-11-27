@@ -80,6 +80,11 @@ class BORISInterface(BaseEventsInterface):
         """
         return _get_observation_names(file_path=file_path)
 
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List every observation declared in the project, including unscored ones."""
+        return cls.get_observation_names(file_path)
+
     @validate_call
     def __init__(
         self,
@@ -359,7 +364,7 @@ class BORISInterface(BaseEventsInterface):
         if catalogue is not None and list(catalogue["behavior"].data) != list(self._project.behaviors):
             # A second observation of the same project meets its own catalogue and reuses it. A second
             # project meets somebody else's, and extending it would make one catalogue claim to be the
-            # scheme of two projects while its `exclusive` flag and its rows describe only the first.
+            # scheme of two projects while its rows describe only the first.
             raise ValueError(
                 f"The behavior processing module already holds an 'Ethogram' catalogue declaring "
                 f"{list(catalogue['behavior'].data)}, and this project declares "
@@ -369,10 +374,10 @@ class BORISInterface(BaseEventsInterface):
 
         behavior_columns = {}
         # BORIS states exclusion per behavior, as the codes that starting one terminates, so it is
-        # per-behavior data and belongs in a column beside `category` rather than in the table-level
-        # `exclusive` flag, which asks a different question: whether the whole scheme is a single
-        # label partition. Written only where some behavior excludes something, for the same dtype
-        # reason as the modifier columns below.
+        # per-behavior data and belongs in a column beside `category` rather than in the bouts'
+        # `bout_concurrency`, which asks a different question: whether bouts may overlap at all.
+        # Written only where some behavior excludes something, for the same dtype reason as the
+        # modifier columns below.
         declares_exclusions = any(behavior.excluded for behavior in self._project.behaviors.values())
         if declares_exclusions:
             behavior_columns["excludes"] = {
@@ -572,10 +577,9 @@ class BORISInterface(BaseEventsInterface):
             },
             labeling_method="manual",
             # BORIS states exclusion per behavior, as the set of codes that starting one terminates, so a
-            # scheme can make four behaviors mutually exclusive and leave the rest free. A single boolean
-            # cannot carry that, and asserting True would overclaim, so the flag stays False and the
-            # per-behavior sets go into the `excludes` column.
-            exclusive=False,
+            # scheme can make four behaviors mutually exclusive and leave the rest free. Bouts may then
+            # overlap, and the per-behavior sets go into the `excludes` column.
+            bout_concurrency="concurrent",
             source_software="BORIS",
             behavior_columns=behavior_columns,
             bout_columns=bout_columns,

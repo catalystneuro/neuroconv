@@ -875,7 +875,7 @@ def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
 
     # The configuration read back reproduces the settings it was read from
     assert dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(100,), filters=None, compressors=[Shuffle(elementsize=8), GzipCodec(level=1)]
+        chunks=(100,), filters=None, compressors=[Shuffle(elementsize=8), GzipCodec(level=1)], shards=None
     )
 
 

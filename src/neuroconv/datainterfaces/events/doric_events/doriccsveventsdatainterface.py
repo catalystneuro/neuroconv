@@ -4,6 +4,7 @@ from pydantic import FilePath, validate_call
 
 from neuroconv.utils import DeepDict
 
+from .doriceventsdatainterface import _doric_event_source_name
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import (
     _get_event_type_source_ids,
@@ -104,6 +105,12 @@ class DoricCSVEventsInterface(BaseEventsInterface):
             detection_configuration=detection_configuration,
             verbose=verbose,
         )
+
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List the numbered digital port and any separately named signals in the two-row header."""
+        _, digital_columns = cls._discover_columns(file_path)
+        return list(dict.fromkeys(_doric_event_source_name(str(name)) for group, name in digital_columns))
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""

@@ -416,7 +416,7 @@ class TestScanImageImagingInterfacesAssertions:
         file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")
         with pytest.raises(
             ValueError,
-            match="Unsupported ScanImage version 65536. Supported versions are 3, 4, and 5.Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead.",
+            match="Invalid metadata: The metadata is either None or empty.",
         ):
             ScanImageImagingInterface(file_path=file_path)
 
@@ -542,6 +542,55 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
         assert two_photon_series.rate == self.expected_rate
         assert two_photon_series.starting_time == self.expected_starting_time
         nwbfile.read_io.close()
+
+
+class TestScanImageImagingInterfaceVersion3(ImagingExtractorInterfaceTestMixin):
+    """A ScanImage 3.8 file, whose header is text in the page description instead of the header of later versions."""
+
+    data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging",)
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "legacy"
+            / "acquisition_setup"
+            / "planar_single_channel_version_3_8"
+            / "planar.tif"
+        ),
+    )
+    save_directory = OUTPUT_PATH
+
+    expected_session_start_time = datetime(2017, 10, 9, 16, 57, 7, 967000)
+    expected_imaging_rate = 3.90625
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+        assert metadata["Ophys"]["ImagingPlanes"]["scan_image_imaging"]["imaging_rate"] == self.expected_imaging_rate
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+
+
+class TestScanImageImagingInterfaceVersion4(TestScanImageImagingInterfaceVersion3):
+    """A ScanImage 4 file, whose header is text in the page description like that of ScanImage 3."""
+
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "legacy"
+            / "acquisition_setup"
+            / "planar_single_channel_version_4"
+            / "planar.tif"
+        ),
+    )
+
+    expected_session_start_time = datetime(2015, 4, 17, 14, 35, 56, 50000)
+    expected_imaging_rate = 30.838
 
 
 def test_two_channels_of_one_acquisition_share_one_device_entry():
