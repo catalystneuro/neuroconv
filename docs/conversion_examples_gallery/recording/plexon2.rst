@@ -40,3 +40,9 @@ Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"
     interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Plexon2 Events Conversion
+-------------------------
+
+See :ref:`plexon2-events-conversion` to convert digital inputs and strobed words
+from the same PL2 file.

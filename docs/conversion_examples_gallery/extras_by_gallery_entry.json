@@ -72,6 +72,9 @@
   "events/npm_events.rst": {
     "extra": "npm_events"
   },
+  "events/plexon2_events.rst": {
+    "extra": null
+  },
   "events/pyphotometry_events.rst": {
     "extra": "pyphotometry_events"
   },
