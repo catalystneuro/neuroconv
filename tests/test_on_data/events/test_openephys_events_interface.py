@@ -117,12 +117,13 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
         stream_name="Record Node 104#NI-DAQmx-103.PXIe-6341",
     )
     expected_temporal_alignment_keys = ("Record_Node_104_NI_DAQmx_103_PXIe_6341",)
+    expected_event_sources = ("Record Node 104#NI-DAQmx-103.PXIe-6341",)
 
     def test_get_metadata(self, interface):
         event_types = interface.get_metadata()["Events"]["open_ephys_events"]["event_types"]
         assert tuple(event_types) == self.expected_temporal_alignment_keys
         columns = event_types[self.expected_temporal_alignment_keys[0]]["columns"]
-        assert set(columns) == {"state", "line", "onset", "full_word"}
+        assert set(columns) == {"open_ephys_state", "line", "onset", "full_word"}
         assert columns["onset"]["column_categories"]["labels"] == {"rising": "rising", "falling": "falling"}
 
     def test_add_to_nwbfile(self, interface):
@@ -131,20 +132,21 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
 
         assert len(nwbfile.events) == 1
         table = next(iter(nwbfile.events.values()))
-        assert table.colnames == ("timestamp", "state", "line", "onset", "full_word")
+        assert table.colnames == ("timestamp", "open_ephys_state", "line", "onset", "full_word")
         assert len(table) == 3143 + 1121 + 62630 + 93947
-        first_edges_on_line_one = np.flatnonzero(np.asarray(table["line"][:]) == 1)[:4]
+        first_edges_on_line_zero = np.flatnonzero(np.asarray(table["line"][:]) == 0)[:4]
         assert np.allclose(
-            np.asarray(table["timestamp"][:])[first_edges_on_line_one], [728.069181, 728.569167, 729.069233, 729.569267]
+            np.asarray(table["timestamp"][:])[first_edges_on_line_zero],
+            [728.069181, 728.569167, 729.069233, 729.569267],
         )
-        assert list(np.asarray(table["state"][:])[first_edges_on_line_one]) == [-1, 1, -1, 1]
-        assert list(np.asarray(table["onset"][:])[first_edges_on_line_one]) == [
+        assert list(np.asarray(table["open_ephys_state"][:])[first_edges_on_line_zero]) == [-1, 1, -1, 1]
+        assert list(np.asarray(table["onset"][:])[first_edges_on_line_zero]) == [
             "falling",
             "rising",
             "falling",
             "rising",
         ]
-        assert list(np.asarray(table["full_word"][:])[first_edges_on_line_one]) == [66, 67, 66, 67]
+        assert list(np.asarray(table["full_word"][:])[first_edges_on_line_zero]) == [66, 67, 66, 67]
 
     def test_session_start_time(self, interface):
         # Read from the Record Node's settings.xml, so an events-only conversion carries the same start
@@ -152,14 +154,44 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
         assert interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
 
     def test_coded_word_is_kept(self, interface):
-        # The latched word is what a coded port is read from: line 6 fires while lines 7, 2 and 1 are
+        # The latched word is what a coded port is read from: line 5 fires while lines 6, 1 and 0 are
         # also high (99 = 64 + 32 + 2 + 1), which is the payload the neo path drops.
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
         table = next(iter(nwbfile.events.values()))
-        line_six = np.asarray(table["line"][:]) == 6
-        assert list(np.asarray(table["full_word"][:])[line_six][:4]) == [35, 67, 99, 3]
+        line_five = np.asarray(table["line"][:]) == 5
+        assert list(np.asarray(table["full_word"][:])[line_five][:4]) == [35, 67, 99, 3]
+
+    def test_rising_edges_of_one_line(self):
+        configuration = {"rises": {"detection": {"lines": [0], "on_change": {"onset": "rising"}}}}
+        interface = self.data_interface_cls(**self.interface_kwargs, event_extraction_configuration=configuration)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        expected_first_timestamps = [728.569167, 729.569267, 730.569367]
+        expected_first_full_words = [67, 67, 67]
+        table = nwbfile.events["Rises"]
+        assert table.colnames == ("timestamp", "full_word")
+        assert len(table) == 1571
+        np.testing.assert_allclose(table["timestamp"][:3], expected_first_timestamps)
+        np.testing.assert_array_equal(table["full_word"][:3], expected_first_full_words)
+
+    def test_pulses_of_one_line(self):
+        configuration = {"pulses": {"detection": {"lines": [0], "on_change": {"onset": "rising", "end": "falling"}}}}
+        interface = self.data_interface_cls(**self.interface_kwargs, event_extraction_configuration=configuration)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        expected_first_timestamps = [728.569167, 729.569267]
+        expected_first_durations = [0.500067, 0.500067]
+        expected_first_full_words = [67, 67]
+        table = nwbfile.events["Pulses"]
+        assert table.colnames == ("timestamp", "full_word_at_onset", "duration")
+        assert len(table) == 1571
+        np.testing.assert_allclose(table["timestamp"][:2], expected_first_timestamps)
+        np.testing.assert_allclose(table["duration"][:2], expected_first_durations, atol=1e-6)
+        np.testing.assert_array_equal(table["full_word_at_onset"][:2], expected_first_full_words)
 
 
 class TestUnclosedInterval(OpenEphysBinaryEventsInterfaceMixin):
@@ -178,11 +210,21 @@ class TestUnclosedInterval(OpenEphysBinaryEventsInterfaceMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
         table = next(iter(nwbfile.events.values()))
-        line_one = np.asarray(table["line"][:]) == 1
-        edges = list(np.asarray(table["onset"][:])[line_one])
+        line_zero = np.asarray(table["line"][:]) == 0
+        edges = list(np.asarray(table["onset"][:])[line_zero])
         assert len(edges) == 1453
         assert edges.count("rising") == 727
         assert edges.count("falling") == 726
+
+    def test_pulse_left_open_has_missing_duration(self):
+        configuration = {"pulses": {"detection": {"lines": [0], "on_change": {"onset": "rising", "end": "falling"}}}}
+        interface = self.data_interface_cls(**self.interface_kwargs, event_extraction_configuration=configuration)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        table = nwbfile.events["Pulses"]
+        assert len(table) == 727
+        assert np.isnan(table["duration"][-1])
 
 
 class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
@@ -199,10 +241,10 @@ class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
         # experiment3 opens with a falling edge (the line was already high when recording started) and
-        # holds 1493 transitions on line 1, against experiment6's 1453.
+        # holds 1493 transitions on line 0, against experiment6's 1453.
         table = next(iter(nwbfile.events.values()))
-        line_one = np.asarray(table["line"][:]) == 1
-        edges = np.asarray(table["onset"][:])[line_one]
+        line_zero = np.asarray(table["line"][:]) == 0
+        edges = np.asarray(table["onset"][:])[line_zero]
         assert len(edges) == 1493
         assert edges[0] == "falling"
 
@@ -220,6 +262,7 @@ class TestMessages(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin
         stream_name="Record Node 104#MessageCenter",
     )
     expected_temporal_alignment_keys = ("messages",)
+    expected_event_sources = ("Record Node 104#MessageCenter",)
 
     def test_get_metadata(self, interface):
         expected_metadata = {
@@ -247,27 +290,28 @@ class TestMessages(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin
 
 class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin):
     """A recording written before v0.6, which names the states array ``channel_states``, counts its
-    timestamps in samples rather than seconds, and declares eight lines of which only line 8 fired."""
+    timestamps in samples rather than seconds, and declares eight lines of which only line 7 fired."""
 
     interface_kwargs = dict(
         folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking",
         stream_name="Rhythm_FPGA-100.0/TTL_1",
     )
     expected_temporal_alignment_keys = ("Rhythm_FPGA_100_0_TTL_1",)
+    expected_event_sources = ("Rhythm_FPGA-100.0/TTL_1",)
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
         assert len(nwbfile.events) == 1
-        line8 = next(iter(nwbfile.events.values()))
-        assert line8.colnames == ("timestamp", "state", "line", "onset", "full_word", "full_word_pattern")
-        assert len(line8) == 14
+        line7 = next(iter(nwbfile.events.values()))
+        assert line7.colnames == ("timestamp", "open_ephys_state", "line", "onset", "full_word", "full_word_pattern")
+        assert len(line7) == 14
         # 1046013 samples at 30 kHz, the sampling rate the stream declares in structure.oebin.
-        assert np.allclose(line8["timestamp"][:4], [34.8671, 34.867133, 35.100367, 35.1004])
-        assert list(line8["onset"][:4]) == ["rising", "falling", "rising", "falling"]
-        assert list(line8["full_word"][:4]) == [128, 0, 128, 0]
-        assert list(line8["full_word_pattern"][:4]) == ["10000000", "00000000"] * 2
+        assert np.allclose(line7["timestamp"][:4], [34.8671, 34.867133, 35.100367, 35.1004])
+        assert list(line7["onset"][:4]) == ["rising", "falling", "rising", "falling"]
+        assert list(line7["full_word"][:4]) == [128, 0, 128, 0]
+        assert list(line7["full_word_pattern"][:4]) == ["10000000", "00000000"] * 2
 
 
 class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
