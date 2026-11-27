@@ -1647,6 +1647,66 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
         assert bouts.ethogram.name == "CustomEthogram"
         assert bouts.ethogram.description == "Custom catalogue description."
 
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time the interface writes is replaced, except that a bout derived from events ends its kept
+        duration after its new start.
+
+        Overrides the shared check, which expects every written time to take the replacement. ``set_times`` keeps
+        the durations of events, and the bouts of a manual scorer are the closed states of its events (linked
+        through ``source_events``), so such a bout's ``stop_time`` is its replaced ``start_time`` plus the
+        duration it had. The bouts of a segmentation follow the frame times and take the replacement.
+        """
+        from ndx_ethogram import EthogramBouts
+
+        shift = 1.5
+        stretch = 2.0
+
+        metadata = _get_metadata_for_writing(self.interface)
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        original_durations = _get_nwbfile_durations(original_nwbfile)
+        derived_stop_time_identifiers = {
+            f"{table.parent.name}/{table.name}/stop_time"
+            for table in original_nwbfile.objects.values()
+            if isinstance(table, EthogramBouts) and table.source_events is not None
+        }
+
+        replaced_interface = self.data_interface_cls(**self.interface_kwargs)
+        for key in replaced_interface.temporal_alignment.keys():
+            time_bearing_object = replaced_interface.temporal_alignment[key]
+            time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
+        replaced_nwbfile = replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        replaced_times = _get_nwbfile_times(replaced_nwbfile)
+        replaced_durations = _get_nwbfile_durations(replaced_nwbfile)
+
+        assert replaced_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            if identifier in derived_stop_time_identifiers:
+                start_identifier = identifier.removesuffix("stop_time") + "start_time"
+                bout_durations = times - original_times[start_identifier]
+                expected_times = replaced_times[start_identifier] + bout_durations
+            else:
+                expected_times = times * stretch + shift
+            assert_allclose(
+                replaced_times[identifier],
+                expected_times,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not follow `set_times`",
+            )
+
+        assert replaced_durations.keys() == original_durations.keys()
+        for identifier, durations in original_durations.items():
+            assert_allclose(
+                replaced_durations[identifier],
+                durations,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} changed under `set_times`, which keeps the durations",
+            )
+
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Shared tests for single-series fiber photometry interfaces.

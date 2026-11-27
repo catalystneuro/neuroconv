@@ -10,6 +10,7 @@ from .mock_interfaces import (
     MockBehaviorEventInterface,
     MockEventsInterface,
     MockBehavioralSegmentationInterface,
+    MockEthogramInterface,
     MockAudioInterface,
     MockExternalVideoInterface,
     MockSignalEncodedEventsInterface,
