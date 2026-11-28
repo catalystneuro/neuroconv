@@ -6,7 +6,7 @@ from typing import Generator, Literal
 import h5py
 import numpy as np
 import zarr
-from hdmf import Container
+from hdmf import Container, Data
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from pynwb import NWBHDF5IO, NWBFile
@@ -165,6 +165,12 @@ def get_default_dataset_io_configurations(
                     continue
 
                 candidate_dataset = getattr(neurodata_object, known_dataset_field)
+                object_to_configure, dataset_name = neurodata_object, known_dataset_field
+                # Some extension types hold a VectorData object as their `data` (e.g. the ragged arrays of
+                # ndx-spikesorting), so the dataset to configure is that object's own data
+                if isinstance(candidate_dataset, Data):
+                    object_to_configure, dataset_name = candidate_dataset, "data"
+                    candidate_dataset = candidate_dataset.data
 
                 # Skip if already written to file
                 # noinspection PyTypeChecker
@@ -182,13 +188,12 @@ def get_default_dataset_io_configurations(
                     continue
 
                 # Skip datasets with any zero-length axes
-                candidate_dataset = getattr(neurodata_object, known_dataset_field)
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
                 dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
-                    neurodata_object=neurodata_object, dataset_name=known_dataset_field, builder=builder
+                    neurodata_object=object_to_configure, dataset_name=dataset_name, builder=builder
                 )
 
                 yield dataset_io_configuration
